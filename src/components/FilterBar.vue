@@ -79,6 +79,7 @@
 import { ref, computed, watch } from 'vue'
 import SymbolSelect from './SymbolSelect.vue'
 import { CONTRACT_MONTHS, YEAR_RANGES } from '../mock/data.js'
+import { getAvailableMonths } from '../data/index.js'
 
 const props = defineProps({
   initialSymbol: { type: String, default: 'RB' }
@@ -100,7 +101,22 @@ const contractMonth = ref('09')
 const contractMonthB = ref('01')
 const yearRange = ref('all')
 
-const contractMonths = CONTRACT_MONTHS
+// 可选合约月份：有真实数据的品种只显示已有数据的月份；
+// 跨品种模式取两品种月份的交集；无真实数据（mock 兜底）时显示全部 12 个月
+const contractMonths = computed(() => {
+  if (isCrossSymbol.value) {
+    const ma = getAvailableMonths(symbol.value)
+    const mb = getAvailableMonths(symbolB.value)
+    if (ma.length && mb.length) {
+      const setB = new Set(mb)
+      const inter = ma.filter(m => setB.has(m))
+      if (inter.length) return inter
+    }
+    return CONTRACT_MONTHS
+  }
+  const ms = getAvailableMonths(symbol.value)
+  return ms.length ? ms : CONTRACT_MONTHS
+})
 const yearRanges = YEAR_RANGES
 
 const isCrossMonth = computed(() => analyzeType.value === 'crossMonth')
@@ -113,6 +129,24 @@ const controlsEnabled = computed(() => true)
 const crossMode = computed(() =>
   analyzeType.value === 'crossRatio' ? 'ratio' : 'spread'
 )
+
+// 可选月份变化（切换品种/分析类型）后，自动纠正不在范围内的已选月份：
+// 月份A 优先吸附到 '09'，月份B 优先 '01' 且尽量不与 A 相同
+function pickMonth(prefer, exclude) {
+  const ms = contractMonths.value
+  if (prefer && ms.includes(prefer) && prefer !== exclude) return prefer
+  return ms.find(m => m !== exclude) || ms[0]
+}
+
+watch([contractMonths, isCrossMonth], () => {
+  const ms = contractMonths.value
+  if (!ms.includes(contractMonth.value)) {
+    contractMonth.value = pickMonth('09', null)
+  }
+  if (isCrossMonth.value && !ms.includes(contractMonthB.value)) {
+    contractMonthB.value = pickMonth('01', contractMonth.value)
+  }
+})
 
 // 外部（左侧列表）切换品种时同步到品种
 watch(() => props.initialSymbol, (val) => {

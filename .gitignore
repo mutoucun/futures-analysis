@@ -5,6 +5,10 @@ dist/
 # 原始数据缓存（抓取中间产物，体积大，不入版本库）
 raw/
 
+# Python 字节码缓存
+__pycache__/
+*.pyc
+
 # 系统/编辑器杂项
 Thumbs.db
 Desktop.ini

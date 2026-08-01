@@ -35,7 +35,8 @@
               <div
                 v-for="sym in group.symbols"
                 :key="sym.code"
-                :class="['symbol-item', { active: sym.code === selectedSymbol }]"
+                :class="['symbol-item', { active: sym.code === selectedSymbol, 'no-data': !sym.hasData }]"
+                :title="sym.hasData ? '' : '暂无真实数据，展示示例数据'"
                 @click="selectSymbol(sym)"
               >
                 <span class="sym-name">{{ sym.name }}</span>
@@ -58,7 +59,8 @@
               <div
                 v-for="sym in group.symbols"
                 :key="sym.code"
-                :class="['symbol-item', { active: sym.code === selectedSymbol }]"
+                :class="['symbol-item', { active: sym.code === selectedSymbol, 'no-data': !sym.hasData }]"
+                :title="sym.hasData ? '' : '暂无真实数据，展示示例数据'"
                 @click="selectSymbol(sym)"
               >
                 <span class="sym-name">{{ sym.name }}</span>
@@ -77,6 +79,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { EXCHANGES, CATEGORIES } from '../mock/data.js'
+import { hasAnyRealData } from '../data/index.js'
 
 const props = defineProps({
   selectedSymbol: { type: String, default: 'RB' },
@@ -91,11 +94,18 @@ const searchText = ref('')
 const expandedGroups = ref(['SHFE'])
 
 const filterSymbols = (symbols) => {
-  if (!searchText.value.trim()) return symbols
-  const kw = searchText.value.trim().toLowerCase()
-  return symbols.filter(s =>
-    s.name.toLowerCase().includes(kw) || s.code.toLowerCase().includes(kw)
-  )
+  let list = symbols
+  if (searchText.value.trim()) {
+    const kw = searchText.value.trim().toLowerCase()
+    list = list.filter(s =>
+      s.name.toLowerCase().includes(kw) || s.code.toLowerCase().includes(kw)
+    )
+  }
+  // 标记真实数据有无，并把无数据品种稳定排序到本组末尾
+  const decorated = list.map(s => ({ ...s, hasData: hasAnyRealData(s.code) }))
+  return decorated
+    .filter(s => s.hasData)
+    .concat(decorated.filter(s => !s.hasData))
 }
 
 const exchangeGroups = computed(() => {
@@ -302,6 +312,19 @@ function selectSymbol(sym) {
   font-size: 11px;
   color: var(--text-tertiary);
   font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* 无真实数据品种：置灰并排在分组末尾（选中态保留高亮以便识别） */
+.symbol-item.no-data .sym-name {
+  color: var(--text-disabled);
+}
+
+.symbol-item.no-data .sym-code {
+  color: var(--text-disabled);
+}
+
+.symbol-item.no-data.active .sym-name {
+  color: var(--accent);
 }
 
 .collapse-enter-active,

@@ -46,6 +46,23 @@ export function getRealContracts(symbolCode, contractMonth) {
   return [...payload.contracts].sort((a, b) => a.deliveryYear - b.deliveryYear)
 }
 
+/**
+ * 该品种已有真实数据的合约月份列表（升序，如 ['01','05','10']）
+ * 无任何真实数据时返回空数组（调用方据此回退到全月份 mock）
+ */
+export function getAvailableMonths(symbolCode) {
+  const prefix = `${symbolCode}_`
+  return Object.keys(realDataIndex)
+    .filter(key => key.startsWith(prefix))
+    .map(key => key.slice(prefix.length))
+    .sort()
+}
+
+/** 该品种是否存在任何月份的真实数据 */
+export function hasAnyRealData(symbolCode) {
+  return Object.keys(realDataIndex).some(key => key.startsWith(`${symbolCode}_`))
+}
+
 /** 真实数据的最新更新日期（取所有已加载文件中的最大值），无则返回 null */
 export function getRealDataUpdateDate() {
   let max = null
