@@ -1,8 +1,8 @@
 /**
- * 真实数据访问层
+ * 真实数据访问层（按需加载版）
  * ==============
  * 静态 JSON 位于 src/data/futures/，每个 品种+合约月份 一个文件，
- * 由 Python 脚本（scripts/build_data_json.py）从交易所/新浪源清洗生成。
+ * 由 Python 脚本（scripts/build_symbol.py）从交易所/新浪源清洗生成。
  *
  * 文件结构：
  * {
@@ -17,31 +17,66 @@
  *   12月明细表　 —— 月末收盘价，1月以本合约上市年12月为基准
  *
  * 尚未生成真实 JSON 的品种/月份自动回退到 mock 数据（见 mock/data.js）。
+ *
+ * 加载策略：品种多达 50 个、每月一个文件，全量 eager 打包会使首屏 bundle
+ * 膨胀到 20MB+。因此采用「清单同步 + 内容按需」：
+ *   - import.meta.glob 非 eager 模式，构建时仅登记文件路径（同步可读），
+ *     hasRealData / getAvailableMonths / hasAnyRealData 只查清单，保持同步语义；
+ *   - JSON 内容由 ensureRealData() 在查询前动态导入并缓存，
+ *     getRealContracts 同步读取缓存（未加载/无数据返回 null，调用方回退 mock）。
  */
 
-// Vite 原生支持 JSON 导入；eager 模式同步加载，保持现有数据函数同步调用语义
-const modules = import.meta.glob('./futures/*.json', { eager: true })
+// 非 eager：值为 () => import(...) 动态导入函数，键为文件路径（构建期静态确定）
+const loaders = import.meta.glob('./futures/*.json')
 
-// 索引：'RB_09' -> payload
-const realDataIndex = {}
-for (const mod of Object.values(modules)) {
-  const payload = mod.default || mod
-  if (payload && payload.symbol && payload.contractMonth) {
-    realDataIndex[`${payload.symbol}_${payload.contractMonth}`] = payload
-  }
+// 索引：'RB_09' -> 动态导入函数（从文件名解析，无需加载内容）
+const realDataLoaders = {}
+for (const path of Object.keys(loaders)) {
+  const name = path.split('/').pop().replace(/\.json$/, '')
+  realDataLoaders[name] = loaders[path]
 }
 
-/** 是否存在指定 品种+合约月份 的真实数据 */
+// 已加载 payload 缓存 与 进行中的加载 Promise（防止同一文件重复请求）
+const loadedPayloads = {}
+const pendingLoads = {}
+
+/** 是否存在指定 品种+合约月份 的真实数据（同步，仅查文件清单） */
 export function hasRealData(symbolCode, contractMonth) {
-  return !!realDataIndex[`${symbolCode}_${contractMonth}`]
+  return !!realDataLoaders[`${symbolCode}_${contractMonth}`]
+}
+
+/**
+ * 按需加载指定 品种+合约月份 的真实数据（查询前调用）
+ * 已加载则立即返回 true；无对应文件返回 false（调用方回退 mock）；
+ * 加载失败返回 false 并清除挂起记录（允许后续重试）
+ */
+export async function ensureRealData(symbolCode, contractMonth) {
+  const key = `${symbolCode}_${contractMonth}`
+  if (loadedPayloads[key]) return true
+  const loader = realDataLoaders[key]
+  if (!loader) return false
+  if (!pendingLoads[key]) {
+    pendingLoads[key] = loader()
+      .then(mod => {
+        loadedPayloads[key] = mod.default || mod
+        return true
+      })
+      .catch(err => {
+        console.error(`真实数据加载失败 ${key}:`, err)
+        delete pendingLoads[key]
+        return false
+      })
+  }
+  return pendingLoads[key]
 }
 
 /**
  * 获取真实数据的历年合约列表（按交割年升序）
- * @returns {Array<{code, deliveryYear, series}>} 无真实数据时返回 null
+ * 同步读取已加载缓存；未先调用 ensureRealData 或无真实数据时返回 null
+ * @returns {Array<{code, deliveryYear, series}>}
  */
 export function getRealContracts(symbolCode, contractMonth) {
-  const payload = realDataIndex[`${symbolCode}_${contractMonth}`]
+  const payload = loadedPayloads[`${symbolCode}_${contractMonth}`]
   if (!payload) return null
   return [...payload.contracts].sort((a, b) => a.deliveryYear - b.deliveryYear)
 }
@@ -52,21 +87,21 @@ export function getRealContracts(symbolCode, contractMonth) {
  */
 export function getAvailableMonths(symbolCode) {
   const prefix = `${symbolCode}_`
-  return Object.keys(realDataIndex)
+  return Object.keys(realDataLoaders)
     .filter(key => key.startsWith(prefix))
     .map(key => key.slice(prefix.length))
     .sort()
 }
 
-/** 该品种是否存在任何月份的真实数据 */
+/** 该品种是否存在任何月份的真实数据（同步，仅查文件清单） */
 export function hasAnyRealData(symbolCode) {
-  return Object.keys(realDataIndex).some(key => key.startsWith(`${symbolCode}_`))
+  return Object.keys(realDataLoaders).some(key => key.startsWith(`${symbolCode}_`))
 }
 
-/** 真实数据的最新更新日期（取所有已加载文件中的最大值），无则返回 null */
+/** 真实数据的最新更新日期（取已加载文件中的最大值），无则返回 null */
 export function getRealDataUpdateDate() {
   let max = null
-  for (const payload of Object.values(realDataIndex)) {
+  for (const payload of Object.values(loadedPayloads)) {
     if (payload.updatedAt && (!max || payload.updatedAt > max)) max = payload.updatedAt
   }
   return max

@@ -25,8 +25,22 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // 预缓存全部构建产物（数据已打包进 JS，首次访问后整机离线可用）
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,json}']
+        // app shell（index/echarts/pinyin/css/html/图标）全量预缓存，首访后离线秒开；
+        // 品种数据 chunk（NAME_MM-哈希.js，如 RB_09-xxx.js）不预缓存——50 品种全量 20MB+，
+        // 改为运行时按需缓存：用户查过哪个品种才下载并长期缓存哪个
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,json}'],
+        globIgnores: ['assets/[A-Z]*_[0-9][0-9]-*.js'],
+        runtimeCaching: [
+          {
+            // 数据 chunk 带内容哈希，同 URL 内容永不变，CacheFirst 安全
+            urlPattern: /assets\/[A-Z0-9]+_[0-9]{2}-[A-Za-z0-9_-]+\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'futures-data-chunks',
+              expiration: { maxEntries: 400, maxAgeSeconds: 365 * 24 * 60 * 60 }
+            }
+          }
+        ]
       }
     })
   ],

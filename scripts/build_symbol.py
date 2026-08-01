@@ -40,16 +40,114 @@ from merge_mr_data import analyze_contract, fetch_sina_with_volume  # noqa: E402
 SINA_START, SINA_END = 2019, 2026
 
 # 品种配置：exchange 决定本地缓存来源；sina_prefix 为新浪合约代码前缀
-# （上期所/大商所小写，郑商所大写）；months 为该品种实际挂牌的合约月份
+# （上期所/大商所/能源中心小写，郑商所/中金所大写，均已实测验证）；
+# months 为该品种实际挂牌且流动性集中的主力合约月份
 SYMBOLS = {
+    # ---- 上期所 SHFE（本地缓存 2009-2018 + 新浪 2019+）----
     "RB": {"name": "螺纹钢", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "rb",
            "months": ["01", "05", "10"]},
     "HC": {"name": "热卷", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "hc",
            "months": ["01", "05", "10"]},
+    "SS": {"name": "不锈钢", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "ss",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "WR": {"name": "线材", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "wr",
+           "months": ["01", "05", "10"]},
+    "CU": {"name": "沪铜", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "cu",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "AL": {"name": "沪铝", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "al",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "ZN": {"name": "沪锌", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "zn",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "PB": {"name": "沪铅", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "pb",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "NI": {"name": "沪镍", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "ni",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "SN": {"name": "沪锡", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "sn",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "AU": {"name": "沪金", "unit": "元/克", "exchange": "SHFE", "sina_prefix": "au",
+           "months": ["02", "04", "06", "08", "10", "12"]},
+    "AG": {"name": "沪银", "unit": "元/千克", "exchange": "SHFE", "sina_prefix": "ag",
+           "months": ["02", "04", "06", "08", "10", "12"]},
+    "RU": {"name": "橡胶", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "ru",
+           "months": ["01", "05", "09"]},
+    "BU": {"name": "沥青", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "bu",
+           "months": ["06", "09", "12"]},
+    "FU": {"name": "燃料油", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "fu",
+           "months": ["01", "05", "09"]},
+    "SP": {"name": "纸浆", "unit": "元/吨", "exchange": "SHFE", "sina_prefix": "sp",
+           "months": ["01", "05", "09"]},
+    # ---- 大商所 DCE（无本地缓存，仅新浪 2019+）----
+    "I":  {"name": "铁矿石", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "i",
+           "months": ["01", "05", "09"]},
+    "J":  {"name": "焦炭", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "j",
+           "months": ["01", "05", "09"]},
+    "JM": {"name": "焦煤", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "jm",
+           "months": ["01", "05", "09"]},
     "M":  {"name": "豆粕", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "m",
            "months": ["01", "03", "05", "07", "08", "09", "11", "12"]},
+    "Y":  {"name": "豆油", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "y",
+           "months": ["01", "05", "09"]},
+    "A":  {"name": "豆一", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "a",
+           "months": ["01", "03", "05", "07", "09", "11"]},
+    "B":  {"name": "豆二", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "b",
+           "months": ["01", "03", "05", "07", "09", "11"]},
+    "P":  {"name": "棕榈油", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "p",
+           "months": ["01", "05", "09"]},
+    "C":  {"name": "玉米", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "c",
+           "months": ["01", "03", "05", "07", "09", "11"]},
+    "L":  {"name": "塑料", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "l",
+           "months": ["01", "05", "09"]},
+    "PP": {"name": "聚丙烯", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "pp",
+           "months": ["01", "05", "09"]},
+    "V":  {"name": "PVC", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "v",
+           "months": ["01", "05", "09"]},
+    "EG": {"name": "乙二醇", "unit": "元/吨", "exchange": "DCE", "sina_prefix": "eg",
+           "months": ["01", "05", "09"]},
+    # ---- 郑商所 CZCE（本地缓存 2013-2019 + 新浪 2019+；新浪前缀大写）----
+    "MA": {"name": "甲醇", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "MA",
+           "months": ["01", "05", "09"]},
+    "TA": {"name": "PTA", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "TA",
+           "months": ["01", "05", "09"]},
+    "SA": {"name": "纯碱", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "SA",
+           "months": ["01", "05", "09"]},
+    "FG": {"name": "玻璃", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "FG",
+           "months": ["01", "05", "09"]},
+    "SR": {"name": "白糖", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "SR",
+           "months": ["01", "05", "09"]},
+    "CF": {"name": "棉花", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "CF",
+           "months": ["01", "05", "09"]},
+    "AP": {"name": "苹果", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "AP",
+           "months": ["01", "05", "10"]},
     "RM": {"name": "菜粕", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "RM",
            "months": ["01", "03", "05", "07", "09", "11"]},
+    "OI": {"name": "菜油", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "OI",
+           "months": ["01", "05", "09"]},
+    "SF": {"name": "硅铁", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "SF",
+           "months": ["01", "05", "09"]},
+    "SM": {"name": "锰硅", "unit": "元/吨", "exchange": "CZCE", "sina_prefix": "SM",
+           "months": ["01", "05", "09"]},
+    # ---- 中金所 CFFEX（无本地缓存，仅新浪 2019+；前缀大写）----
+    "IF": {"name": "沪深300", "unit": "点", "exchange": "CFFEX", "sina_prefix": "IF",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "IC": {"name": "中证500", "unit": "点", "exchange": "CFFEX", "sina_prefix": "IC",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "IH": {"name": "上证50", "unit": "点", "exchange": "CFFEX", "sina_prefix": "IH",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "IM": {"name": "中证1000", "unit": "点", "exchange": "CFFEX", "sina_prefix": "IM",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "T":  {"name": "十年国债", "unit": "元", "exchange": "CFFEX", "sina_prefix": "T",
+           "months": ["03", "06", "09", "12"]},
+    "TF": {"name": "五年国债", "unit": "元", "exchange": "CFFEX", "sina_prefix": "TF",
+           "months": ["03", "06", "09", "12"]},
+    # ---- 能源中心 INE（无本地缓存，仅新浪 2019+；前缀小写）----
+    "SC": {"name": "原油", "unit": "元/桶", "exchange": "INE", "sina_prefix": "sc",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "NR": {"name": "20号胶", "unit": "元/吨", "exchange": "INE", "sina_prefix": "nr",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "LU": {"name": "低硫燃油", "unit": "元/吨", "exchange": "INE", "sina_prefix": "lu",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
+    "BC": {"name": "国际铜", "unit": "元/吨", "exchange": "INE", "sina_prefix": "bc",
+           "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]},
 }
 
 
@@ -161,7 +259,12 @@ def fetch_sina_all(sym, months):
         yy = str(year % 100).zfill(2)
         for month in months:
             sina_code = f"{prefix}{yy}{month}"
-            rows = fetch_sina_with_volume(sina_code)
+            try:
+                rows = fetch_sina_with_volume(sina_code)
+            except Exception as e:
+                # 部分已退市合约新浪无历史数据，akshare 抛异常（如空表 ValueError），按无数据处理
+                rows = []
+                print(f"  [!] {sina_code} 抓取异常按无数据处理: {type(e).__name__}")
             time.sleep(0.5)
             done += 1
             if rows:
@@ -264,21 +367,34 @@ def build_symbol(sym, out_dir, use_sina=True, min_contracts=3, min_rows=20):
 
 def main():
     parser = argparse.ArgumentParser(description="按品种一键生成所有合约月份的真实数据 JSON")
-    parser.add_argument("symbol", help="品种代码，如 RB / M / RM")
+    parser.add_argument("symbols", nargs="*", help="品种代码，可一次给多个，如 RB M RM；或用 --all 处理全部已配置品种")
+    parser.add_argument("--all", action="store_true", help="处理 SYMBOLS 中全部已配置品种")
     parser.add_argument("--out", default=DEFAULT_OUT, help="输出目录（默认 src/data/futures）")
     parser.add_argument("--no-sina", action="store_true", help="不使用新浪源（仅本地缓存，离线验证用）")
     parser.add_argument("--min-contracts", type=int, default=3, help="月份保留的最少合约数（默认3）")
     parser.add_argument("--min-rows", type=int, default=20, help="单合约最少有效行数（默认20）")
     args = parser.parse_args()
 
-    sym = args.symbol.upper()
-    if sym not in SYMBOLS:
-        print(f"未配置的品种: {sym}")
+    if args.all:
+        syms = sorted(SYMBOLS)
+    else:
+        syms = [s.upper() for s in args.symbols]
+        if not syms:
+            parser.error("请至少给出一个品种代码（如 RB M RM），或使用 --all 处理全部已配置品种")
+
+    unknown = [s for s in syms if s not in SYMBOLS]
+    if unknown:
+        print(f"未配置的品种: {', '.join(unknown)}")
         print(f"已配置: {', '.join(sorted(SYMBOLS))}（新增品种请在 SYMBOLS 中加一行配置）")
         sys.exit(1)
 
-    build_symbol(sym, args.out, use_sina=not args.no_sina,
-                 min_contracts=args.min_contracts, min_rows=args.min_rows)
+    for i, sym in enumerate(syms, 1):
+        if len(syms) > 1:
+            print(f"\n>>> [{i}/{len(syms)}] 开始处理 {sym} <<<")
+        build_symbol(sym, args.out, use_sina=not args.no_sina,
+                     min_contracts=args.min_contracts, min_rows=args.min_rows)
+    if len(syms) > 1:
+        print(f"\n全部完成：共处理 {len(syms)} 个品种（{', '.join(syms)}）")
 
 
 if __name__ == "__main__":

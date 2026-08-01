@@ -138,6 +138,8 @@ import {
   getCrossMonthDetailData,
   getDataUpdateDate
 } from './mock/data.js'
+// 真实数据按需加载：查询前动态导入对应 品种+月份 的 JSON（首屏 bundle 只含文件清单）
+import { ensureRealData } from './data/index.js'
 
 const filterBarRef = ref(null)
 // 移动端合约列表抽屉开关（桌面端不使用）
@@ -213,8 +215,26 @@ const currentDecimals = computed(() => getSymbolDecimals(currentSymbol.value))
  * 跨月价差入参：{ analyzeType:'crossMonth', symbol, contractMonth, contractMonthB, yearRange }
  * 跨品种入参：{ analyzeType:'crossSymbol'|'crossRatio', symbol, symbolB, crossMode, contractMonth, yearRange }
  */
-function fetchData(params) {
+// 查询序号：快速连续查询时，先发出的查询后加载完数据也不覆盖新查询结果
+let querySeq = 0
+
+async function fetchData(params) {
   const { symbol, contractMonth, yearRange, indexMode, analyzeType } = params
+  const seq = ++querySeq
+
+  // 按需预加载真实数据 JSON：跨月价差需同品种两个月份，跨品种需两个品种同一月份；
+  // 无真实文件的品种/月份 ensureRealData 返回 false，后续取数自动回退 mock
+  const loads = [ensureRealData(symbol, contractMonth)]
+  if (analyzeType === 'crossMonth') {
+    loads.push(ensureRealData(symbol, params.contractMonthB))
+  } else if (analyzeType === 'crossSymbol' || analyzeType === 'crossRatio') {
+    loads.push(ensureRealData(params.symbolB, contractMonth))
+  }
+  await Promise.all(loads)
+  if (seq !== querySeq) return // 已有更新的查询发出，丢弃本次过期结果
+
+  // 真实数据就绪后刷新顶部"数据更新"日期（首次加载前显示 mock 兜底日期）
+  dataUpdateDate.value = getDataUpdateDate()
 
   currentSymbol.value = symbol
   currentAnalyzeType.value = analyzeType

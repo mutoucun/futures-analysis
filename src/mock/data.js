@@ -44,6 +44,7 @@ export const EXCHANGES = [
       { code: 'M', name: '豆粕', category: '农产品', price: 3200, unit: '元/吨', startYear: 2006, tick: 1 },
       { code: 'Y', name: '豆油', category: '农产品', price: 7900, unit: '元/吨', startYear: 2006, tick: 2 },
       { code: 'A', name: '豆一', category: '农产品', price: 4600, unit: '元/吨', startYear: 2006, tick: 1 },
+      { code: 'B', name: '豆二', category: '农产品', price: 4000, unit: '元/吨', startYear: 2006, tick: 1 },
       { code: 'P', name: '棕榈油', category: '农产品', price: 8200, unit: '元/吨', startYear: 2007, tick: 2 },
       { code: 'C', name: '玉米', category: '农产品', price: 2450, unit: '元/吨', startYear: 2006, tick: 1 },
       { code: 'L', name: '塑料', category: '能源化工', price: 8300, unit: '元/吨', startYear: 2007, tick: 5 },
