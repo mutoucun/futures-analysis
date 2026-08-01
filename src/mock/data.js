@@ -366,39 +366,59 @@ function sampleSeries(series) {
 }
 
 /**
- * 真实数据季节性计算：每个合约按交割年切片（1月~交割月），
+ * 真实数据季节性计算：每个合约展示「上市~交割」完整生命周期，
+ * 横轴按「交割月收尾」旋转排序 —— 交割月为 M 时，轴从上年 M+1 月排到交割年 M 月，
+ * 共 12 个月（如 09 合约为 10月→次年9月，01 合约为 2月→次年1月）。
+ * 早交割月合约（01/03/05）不再只剩交割年短短几个月，而是完整可比曲线；
+ * 上市较晚的合约（如首个合约）窗口前段为 null。
  * 每年一条独立合约曲线，与 mock 的 computeDailySeasonalCore 输出同构
  * @param {Array} contracts [{code, deliveryYear, series}]（已按交割年升序）
+ * @param {string} contractMonth 合约交割月份 '01'~'12'
  * @param {string} yearRange 'all' | '3' | '5' | '10'
  */
-function computeRealSeasonal(contracts, yearRange) {
+function computeRealSeasonal(contracts, contractMonth, yearRange) {
   const currentYear = contracts[contracts.length - 1].deliveryYear
   let startYear = contracts[0].deliveryYear
   if (yearRange && yearRange !== 'all') {
     startYear = Math.max(startYear, currentYear - parseInt(yearRange))
   }
 
-  // 全部年份交易日（月-日）并集作为公共横轴
-  const dateSet = new Set()
+  const M = parseInt(contractMonth, 10)
+  // 窗口归属：月份 > M → 上年（M+1~12月）；月份 <= M → 交割年（1~M月）。
+  // 该划分同时把"交割月前 12 个月以外"的上市尾段排除（如 09 合约上年 9 月中旬的挂牌日，
+  // 与交割年 9 月同月但早 12 个月，若不排除会与交割月撞在同一轴位置）
+  const inWindow = (dateStr, deliveryYear) => {
+    const y = parseInt(dateStr.slice(0, 4), 10)
+    const m = parseInt(dateStr.slice(5, 7), 10)
+    return m > M ? y === deliveryYear - 1 : y === deliveryYear
+  }
+  // 旋转键：前缀月份偏移（0=窗口起始月 M+1 … 11=交割月 M），保证跨年并集按时间排序
+  const rotKey = (mmdd) => {
+    const m = parseInt(mmdd.slice(0, 2), 10)
+    const offset = (m - M - 1 + 12) % 12
+    return String(offset).padStart(2, '0') + '-' + mmdd
+  }
+
+  // 全部合约窗口内交易日（旋转键）并集作为公共横轴
+  const rotSet = new Set()
   for (const c of contracts) {
     if (c.deliveryYear < startYear) continue
-    const yStr = String(c.deliveryYear)
     for (const p of c.series) {
-      if (p.date.slice(0, 4) === yStr) dateSet.add(p.date.slice(5))
+      if (inWindow(p.date, c.deliveryYear)) rotSet.add(rotKey(p.date.slice(5)))
     }
   }
-  const dates = [...dateSet].sort()
-  const dateIndex = new Map(dates.map((d, i) => [d, i]))
+  const rotDates = [...rotSet].sort()
+  const dates = rotDates.map(k => k.slice(3)) // 去掉偏移前缀 → 'MM-DD' 供展示
+  const rotIndex = new Map(rotDates.map((k, i) => [k, i]))
 
   const years = []
   const data = {}
   for (const c of contracts) {
     if (c.deliveryYear < startYear) continue
-    const yStr = String(c.deliveryYear)
-    const arr = new Array(dates.length).fill(null)
+    const arr = new Array(rotDates.length).fill(null)
     for (const p of c.series) {
-      if (p.date.slice(0, 4) !== yStr) continue
-      arr[dateIndex.get(p.date.slice(5))] = p.close
+      if (!inWindow(p.date, c.deliveryYear)) continue
+      arr[rotIndex.get(rotKey(p.date.slice(5)))] = p.close
     }
     years.push(c.deliveryYear)
     data[c.deliveryYear] = arr
@@ -412,7 +432,7 @@ function computeRealSeasonal(contracts, yearRange) {
  */
 export function getSeasonalData(symbolCode, contractMonth, yearRange) {
   const contracts = getRealContracts(symbolCode, contractMonth)
-  if (contracts) return computeRealSeasonal(contracts, yearRange)
+  if (contracts) return computeRealSeasonal(contracts, contractMonth, yearRange)
 
   const symbol = findSymbol(symbolCode)
   const series = generateDailySeries(symbolCode, contractMonth)
@@ -516,7 +536,7 @@ export function getCrossSeasonalData(symA, symB, contractMonth, yearRange, cross
   const contractsB = getRealContracts(symB, contractMonth)
   if (contractsA && contractsB) {
     const pseudo = computeRealCrossContracts(contractsA, contractsB, crossMode)
-    if (pseudo.length) return computeRealSeasonal(pseudo, yearRange)
+    if (pseudo.length) return computeRealSeasonal(pseudo, contractMonth, yearRange)
   }
 
   const series = getCrossSeries(symA, symB, contractMonth, crossMode)
