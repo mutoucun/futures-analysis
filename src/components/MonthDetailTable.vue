@@ -414,29 +414,52 @@ function exportCSV() {
     gap: 8px;
   }
 
+  /* 标题独占一行，"导出CSV"与指标模式并排同一行（右对齐） */
   .table-header-left {
-    gap: 10px;
+    display: contents;
   }
 
   .table-title {
+    flex-basis: 100%;
     font-size: 13px;
   }
 
+  /* 压缩单元格宽度：小字号 + 窄内边距 + 低 min-width */
   .detail-table {
     font-size: 12px;
   }
 
   .detail-table th,
   .detail-table td {
-    padding: 6px;
+    padding: 4px 2px;
+  }
+
+  /* thead th 基础样式选择器优先级更高，须单独覆盖 */
+  .detail-table thead th {
+    padding: 4px 2px;
   }
 
   .contract-col {
-    min-width: 82px;
+    min-width: 56px;
   }
 
   .month-col {
-    min-width: 58px;
+    min-width: 40px;
+  }
+
+  .contract-cell,
+  .value-cell,
+  .stats-cell {
+    font-size: 10px;
+  }
+
+  /* 统计格涨/跌竖向堆叠，避免 "+3.45%/-2.10%" 长文本撑宽月份列 */
+  .stat-sep {
+    display: none;
+  }
+
+  .stat-down {
+    display: block;
   }
 }
 </style>
