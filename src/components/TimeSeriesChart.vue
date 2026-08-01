@@ -91,7 +91,7 @@ function buildOption() {
       }
       // 分段太窄（采样点<4个，约不足一个月）不放下标签，避免重叠
       if (seg.endIndex - seg.startIndex >= 3) {
-        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), seg.label)
+        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), `${seg.start}~${seg.end}`)
       }
       if (si % 2 === 1) {
         bandData.push([
@@ -131,7 +131,8 @@ function buildOption() {
       left: 70,
       right: 20,
       top: 30,
-      bottom: 60
+      // 有分段时轴下方需容纳旋转45°的日期区间标签（约85px）+ 缩放滑块
+      bottom: hasSeg ? 115 : 60
     },
     dataZoom: [
       {
@@ -158,9 +159,11 @@ function buildOption() {
       axisLine: { lineStyle: { color: th.axisLine } },
       axisLabel: {
         color: th.axisLabel,
-        fontSize: 11,
-        // 有分段：逐个索引判断，只在分段中点打合约标签；无分段：自动间隔显示年份
+        fontSize: hasSeg ? 10 : 11,
+        // 有分段：逐个索引判断，只在分段中点打"开始~结束日期"标签（旋转45°防重叠）；
+        // 无分段：自动间隔显示年份
         interval: hasSeg ? 0 : 'auto',
+        rotate: hasSeg ? 45 : 0,
         formatter: hasSeg
           ? (val, idx) => (segLabelAt.has(idx) ? segLabelAt.get(idx) : '')
           : (val) => val.substring(0, 4)
