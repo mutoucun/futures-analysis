@@ -367,6 +367,85 @@ function sampleSeries(series) {
 }
 
 /**
+ * 按日期合并多年同月合约为一条连续时序，并为每个交易日记录所属合约
+ * （重叠日期以较晚交割的合约为准，即"XX连续"的换月口径）
+ * @param {Array} contracts 含 series 的合约列表（已按交割年升序）
+ * @param {Function} ownerOf 合约 -> 分段标识（单合约用合约代码，跨品种伪合约用交割年）
+ * @param {Function} labelOf 合约 -> 分段显示标签
+ * @returns {Array<{date, close, owner, label}>} 按日期升序
+ */
+function mergeContractSeries(contracts, ownerOf, labelOf) {
+  const byDate = new Map()
+  for (const c of contracts) {
+    const owner = ownerOf(c)
+    const label = labelOf(c)
+    for (const p of c.series) byDate.set(p.date, { close: p.close, owner, label })
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, v]) => ({ date, close: v.close, owner: v.owner, label: v.label }))
+}
+
+/**
+ * 采样并计算合约分段（连续时序图 X 轴换合约色带用）
+ * 分段在完整序列上按所属合约归并（保留合约真实起止日期），再映射到采样点索引区间
+ * @returns {{dates, closes, segments: Array<{owner, label, start, end, startIndex, endIndex}>}}
+ */
+function sampleSeriesWithSegments(series) {
+  const sampled = series.filter((_, i) => i % 5 === 0)
+  if (series.length > 0 && sampled[sampled.length - 1] !== series[series.length - 1]) {
+    sampled.push(series[series.length - 1])
+  }
+
+  // 完整序列上的所属合约分段（start/end 为合约真实首尾交易日）
+  const rawSegs = []
+  for (const d of series) {
+    const last = rawSegs[rawSegs.length - 1]
+    if (last && last.owner === d.owner) {
+      last.end = d.date
+    } else {
+      rawSegs.push({ owner: d.owner, label: d.label, start: d.date, end: d.date })
+    }
+  }
+
+  // 二分查找采样点所属分段
+  const findSeg = (date) => {
+    let lo = 0, hi = rawSegs.length - 1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      const s = rawSegs[mid]
+      if (date < s.start) hi = mid - 1
+      else if (date > s.end) lo = mid + 1
+      else return s
+    }
+    return null
+  }
+
+  // 相邻同合约采样点归并为展示分段（索引基于采样后数组）
+  const segments = []
+  sampled.forEach((d, i) => {
+    const rs = findSeg(d.date)
+    if (!rs) return
+    const last = segments[segments.length - 1]
+    if (last && last.owner === rs.owner) {
+      last.endIndex = i
+    } else {
+      segments.push({
+        owner: rs.owner, label: rs.label,
+        start: rs.start, end: rs.end,
+        startIndex: i, endIndex: i
+      })
+    }
+  })
+
+  return {
+    dates: sampled.map(d => d.date),
+    closes: sampled.map(d => d.close),
+    segments
+  }
+}
+
+/**
  * 真实数据季节性计算：每个合约展示「上市~交割」完整生命周期，
  * 横轴按「交割月收尾」旋转排序 —— 交割月为 M 时，轴从上年 M+1 月排到交割年 M 月，
  * 共 12 个月（如 09 合约为 10月→次年9月，01 合约为 2月→次年1月）。
@@ -442,21 +521,19 @@ export function getSeasonalData(symbolCode, contractMonth, yearRange) {
 
 /**
  * 获取连续时序图数据（合约收盘价走势）—— 单合约
- * 真实数据为各年同月合约完整周期首尾拼接（如"09连续"，合约切换处存在正常基差跳空）
- * @returns { dates: string[], closes: number[] }
+ * 真实数据为各年同月合约完整周期首尾拼接（如"09连续"，合约切换处存在正常基差跳空），
+ * 并输出 segments 标识每个交易日所属合约，供 X 轴区分换合约色带
+ * @returns { dates: string[], closes: number[], segments?: Array }
  */
 export function getTimeSeriesData(symbolCode, contractMonth) {
   const contracts = getRealContracts(symbolCode, contractMonth)
   if (contracts) {
-    // 按日期合并全部合约，重叠日期以较晚交割的合约为准
-    const byDate = new Map()
-    for (const c of contracts) {
-      for (const p of c.series) byDate.set(p.date, p.close)
-    }
-    const series = [...byDate.entries()]
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      .map(([date, close]) => ({ date, close }))
-    return sampleSeries(series)
+    const series = mergeContractSeries(
+      contracts,
+      c => c.code,
+      c => String(c.deliveryYear).slice(2) + contractMonth
+    )
+    return sampleSeriesWithSegments(series)
   }
 
   const series = generateDailySeries(symbolCode, contractMonth)
@@ -544,7 +621,7 @@ export function getCrossSeasonalData(symA, symB, contractMonth, yearRange, cross
   return computeDailySeasonalCore(series, crossStartYear(symA, symB), yearRange)
 }
 
-/** 跨品种连续时序数据（价差/比值走势） */
+/** 跨品种连续时序数据（价差/比值走势），真实路径同样输出换合约分段 segments */
 export function getCrossTimeSeriesData(symA, symB, contractMonth, crossMode) {
   const contractsA = getRealContracts(symA, contractMonth)
   const contractsB = getRealContracts(symB, contractMonth)
@@ -552,14 +629,12 @@ export function getCrossTimeSeriesData(symA, symB, contractMonth, crossMode) {
     const pseudo = computeRealCrossContracts(contractsA, contractsB, crossMode)
     if (pseudo.length) {
       // 按日期拼接全部年份价差，重叠日期以较晚交割年为准（与单合约"09连续"口径一致）
-      const byDate = new Map()
-      for (const c of pseudo) {
-        for (const p of c.series) byDate.set(p.date, p.close)
-      }
-      const series = [...byDate.entries()]
-        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-        .map(([date, close]) => ({ date, close }))
-      return sampleSeries(series)
+      const series = mergeContractSeries(
+        pseudo,
+        c => c.deliveryYear,
+        c => String(c.deliveryYear)
+      )
+      return sampleSeriesWithSegments(series)
     }
   }
 

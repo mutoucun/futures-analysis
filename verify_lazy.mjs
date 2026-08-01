@@ -80,6 +80,32 @@ try {
   check('getDataUpdateDate 取真实日期', mock.getDataUpdateDate() === getRealDataUpdateDate(),
     mock.getDataUpdateDate())
 
+  console.log('\n== 3b. 连续时序换合约分段 ==')
+  await ensureRealData('CU', '09')
+  const cuContracts = getRealContracts('CU', '09')
+  const tsCU09 = mock.getTimeSeriesData('CU', '09')
+  const segs = tsCU09.segments
+  check('CU09 时序返回 segments', Array.isArray(segs) && segs.length > 0, `分段=${segs && segs.length}`)
+  check('CU09 分段数=合约数', segs.length === cuContracts.length,
+    `分段=${segs.length} 合约=${cuContracts.length}`)
+  check('CU09 首段标签=0909', segs[0].label === '0909', segs[0].label)
+  check('CU09 末段标签=2609', segs[segs.length - 1].label === '2609', segs[segs.length - 1].label)
+  check('CU09 分段索引覆盖全部采样点',
+    segs[0].startIndex === 0 && segs[segs.length - 1].endIndex === tsCU09.dates.length - 1 &&
+    segs.every((s, i) => i === 0 || s.startIndex === segs[i - 1].endIndex + 1),
+    `采样点=${tsCU09.dates.length}`)
+  check('CU09 分段日期有序且标签=交割年+09',
+    segs.every((s, i) => (i === 0 || s.start > segs[i - 1].end) &&
+      s.label === String(cuContracts[i].deliveryYear).slice(2) + '09'))
+  check('CU09 段内采样日期落在真实周期内',
+    segs.every(s => tsCU09.dates[s.startIndex] >= s.start && tsCU09.dates[s.endIndex] <= s.end))
+  const tsMRM = mock.getCrossTimeSeriesData('M', 'RM', '09', 'spread')
+  check('M-RM 价差时序有分段且标签为交割年',
+    Array.isArray(tsMRM.segments) && tsMRM.segments.length >= 5 &&
+      /^\d{4}$/.test(tsMRM.segments[0].label),
+    `分段=${tsMRM.segments && tsMRM.segments.length} 首标签=${tsMRM.segments && tsMRM.segments[0].label}`)
+  check('RB02 mock 回退无 segments', tsCU.segments === undefined)
+
   console.log('\n== 4. App.vue SSR 渲染 ==')
   // 浏览器 API 桩：App.vue 首屏主题脚本读 document/localStorage；
   // zrender 模块初始化时探测环境，需要 navigator.userAgent 与 document.createElement().style
