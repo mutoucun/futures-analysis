@@ -78,6 +78,9 @@ function buildOption() {
   const { dates, closes, segments } = props.timeSeriesData
   const th = chartTheme.value
 
+  // 日期显示用斜线格式：2024-10-08 -> 2024/10/08
+  const slashDate = (d) => String(d).split('-').join('/')
+
   // 换合约分段（真实数据才有）：交替色带 + 分段中点刻度标签 + tooltip 合约周期
   const hasSeg = Array.isArray(segments) && segments.length > 1
   const segLabelAt = new Map() // 采样索引(分段中点) -> 合约标签
@@ -91,7 +94,7 @@ function buildOption() {
       }
       // 分段太窄（采样点<4个，约不足一个月）不放下标签，避免重叠
       if (seg.endIndex - seg.startIndex >= 3) {
-        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), `${seg.start}~${seg.end}`)
+        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), `${slashDate(seg.start)}~${slashDate(seg.end)}`)
       }
       if (si % 2 === 1) {
         bandData.push([
@@ -121,7 +124,7 @@ function buildOption() {
         // 换合约分段：显示该日期所属合约及其周期
         const seg = hasSeg ? segOfIndex[p.dataIndex] : null
         const segLine = seg
-          ? `<div style="margin-top:4px;font-size:11px;color:${th.tooltipSub}">合约 ${seg.label}（${seg.start} ~ ${seg.end}）</div>`
+          ? `<div style="margin-top:4px;font-size:11px;color:${th.tooltipSub}">合约 ${seg.label}（${slashDate(seg.start)} ~ ${slashDate(seg.end)}）</div>`
           : ''
         return `<div style="font-weight:600">${p.axisValue}</div>${segLine}
           <div style="margin-top:4px">${p.marker} 收盘价：<b>${val}</b></div>`
