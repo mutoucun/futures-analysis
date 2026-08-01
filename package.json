@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "serve": "node scripts/serve_local.js",
-    "offline": "vite build && node scripts/serve_local.js"
+    "offline": "vite build && node scripts/serve_local.js",
+    "deploy": "node scripts/deploy.js"
   },
   "dependencies": {
     "echarts": "^5.5.0",
