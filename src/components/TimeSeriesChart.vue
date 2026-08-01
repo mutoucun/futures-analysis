@@ -292,12 +292,12 @@ onBeforeUnmount(() => {
 
 .chart-container {
   width: 100%;
-  height: 260px;
+  height: 520px;
   transition: height 0.3s ease;
 }
 
 .chart-container.expanded {
-  height: 520px;
+  height: 760px;
 }
 
 /* ===== 移动端适配 ===== */
@@ -309,11 +309,11 @@ onBeforeUnmount(() => {
   }
 
   .chart-container {
-    height: 220px;
+    height: 320px;
   }
 
   .chart-container.expanded {
-    height: 420px;
+    height: 560px;
   }
 }
 </style>
