@@ -37,7 +37,9 @@ sys.path.insert(0, HERE)
 from merge_mr_data import analyze_contract, fetch_sina_with_volume  # noqa: E402
 
 # 新浪源覆盖范围（更早合约已退市，新浪不可得）
-SINA_START, SINA_END = 2019, 2026
+# 结束年取"当前年份+1"：早月合约（尤其01）会提前一年挂牌，
+# 如 2026-08 时 2701 合约已上市半年，必须纳入抓取范围
+SINA_START, SINA_END = 2019, date.today().year + 1
 
 # 品种配置：exchange 决定本地缓存来源；sina_prefix 为新浪合约代码前缀
 # （上期所/大商所/能源中心小写，郑商所/中金所大写，均已实测验证）；
