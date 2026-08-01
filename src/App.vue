@@ -716,11 +716,19 @@ body {
     display: none;
   }
 
+  /* 移动端取消筛选区置顶固定：整列合并为一个滚动区，
+     筛选条件随内容一起滚走，图表/表格获得完整视口高度 */
+  .right-column {
+    overflow-y: auto;
+  }
+
   .filter-wrap {
     padding: 10px 10px 0;
   }
 
   .main-content {
+    overflow: visible;
+    flex: none;
     padding: 10px 10px 20px;
     gap: 10px;
   }
