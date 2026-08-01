@@ -1,0 +1,14 @@
+# 依赖与构建产物（均可重新生成）
+node_modules/
+dist/
+
+# 原始数据缓存（抓取中间产物，体积大，不入版本库）
+raw/
+
+# 系统/编辑器杂项
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.local
+.vscode/
+.idea/
