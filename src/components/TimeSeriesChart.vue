@@ -131,8 +131,7 @@ function buildOption() {
       left: 70,
       right: 20,
       top: 30,
-      // 有分段时轴下方需容纳旋转45°的日期区间标签（约85px）+ 缩放滑块
-      bottom: hasSeg ? 115 : 60
+      bottom: 60
     },
     dataZoom: [
       {
@@ -160,10 +159,11 @@ function buildOption() {
       axisLabel: {
         color: th.axisLabel,
         fontSize: hasSeg ? 10 : 11,
-        // 有分段：逐个索引判断，只在分段中点打"开始~结束日期"标签（旋转45°防重叠）；
+        // 有分段：只在分段中点横排打"开始~结束日期"标签，
+        // 色带密集放不下时由 hideOverlap 自动隐藏（缩放放大后会重新显示）；
         // 无分段：自动间隔显示年份
         interval: hasSeg ? 0 : 'auto',
-        rotate: hasSeg ? 45 : 0,
+        hideOverlap: hasSeg,
         formatter: hasSeg
           ? (val, idx) => (segLabelAt.has(idx) ? segLabelAt.get(idx) : '')
           : (val) => val.substring(0, 4)
