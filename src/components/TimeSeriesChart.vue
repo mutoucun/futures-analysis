@@ -108,42 +108,32 @@ function buildOption() {
     contractACloses = dates.map(d => aMap.get(d) ?? null)
   }
 
-  // 换合约分段（真实数据才有）：交替色带 + 分段中点刻度标签 + tooltip 合约周期
+  // 换合约分段（真实数据才有）：交替色带 + 合约周期标注（均在 markArea，跟随 dataZoom）
   const hasSeg = Array.isArray(segments) && segments.length > 1
   const segOfIndex = []        // 采样索引 -> 所属分段
-  const bandData = []          // markArea 数据（奇数分段铺浅底，偶数分段留白形成交替）
-  const segMarkLineData = []   // markLine 合约周期标注（锚定日期，跟随缩放）
+  const bandData = []          // markArea 数据：所有分段都有标签，奇数段额外铺底色
   if (hasSeg) {
     for (let i = 0; i < dates.length; i++) segOfIndex[i] = null
     segments.forEach((seg, si) => {
       for (let i = seg.startIndex; i <= seg.endIndex && i < dates.length; i++) {
         segOfIndex[i] = seg
       }
-      // 合约周期标注：锚定在分段中点日期上，跟随 dataZoom
-      if (seg.endIndex - seg.startIndex >= 3) {
-        const midDate = dates[Math.round((seg.startIndex + seg.endIndex) / 2)]
-        segMarkLineData.push({
-          name: `${slashDate(seg.start)}~${slashDate(seg.end)}`,
-          xAxis: midDate,
-          label: {
+      const showLabel = seg.endIndex - seg.startIndex >= 3
+      bandData.push([
+        {
+          xAxis: dates[seg.startIndex],
+          itemStyle: { color: si % 2 === 1 ? th.band : 'transparent' },
+          label: showLabel ? {
             show: true,
-            formatter: '{b}',
-            position: 'start',
-            distance: 8,
+            position: 'insideBottom',
+            formatter: `${slashDate(seg.start)}~${slashDate(seg.end)}`,
             color: th.axisLabel,
             fontSize: 10,
-            textBorderColor: props.isDark ? '#1b202b' : '#fff',
-            textBorderWidth: 2
-          },
-          lineStyle: { width: 1, type: 'dashed', opacity: 0.25, color: th.axisLabel }
-        })
-      }
-      if (si % 2 === 1) {
-        bandData.push([
-          { xAxis: dates[seg.startIndex], itemStyle: { color: th.band } },
-          { xAxis: dates[seg.endIndex] }
-        ])
-      }
+            distance: 5
+          } : undefined
+        },
+        { xAxis: dates[seg.endIndex] }
+      ])
     })
   }
 
@@ -182,11 +172,6 @@ function buildOption() {
     lineStyle: { color: th.line, width: 1.5 },
     itemStyle: { color: th.line },
     markArea: bandData.length ? { silent: true, data: bandData } : undefined,
-    markLine: segMarkLineData.length ? {
-      silent: true,
-      symbol: 'none',
-      data: segMarkLineData
-    } : undefined,
     areaStyle: showA ? undefined : {
       color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
         { offset: 0, color: th.areaTop },
@@ -271,8 +256,11 @@ function buildOption() {
       boundaryGap: false,
       axisLine: { lineStyle: { color: th.axisLine } },
       axisLabel: {
+        show: !hasSeg,
         color: th.axisLabel,
         fontSize: 11,
+        interval: 'auto',
+        hideOverlap: true,
         formatter: (val) => val.substring(0, 4)
       },
       axisTick: { show: false }
