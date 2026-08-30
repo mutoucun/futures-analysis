@@ -271,7 +271,22 @@ function buildOption() {
         color: th.axisLabel,
         fontSize: 11,
         interval: 'auto',
-        formatter: (val) => val.substring(0, 4)
+        formatter: (() => {
+          const shownYears = new Set()
+          let lastYear = ''
+          return (val) => {
+            const year = val.substring(0, 4)
+            const month = parseInt(val.substring(5, 7), 10)
+            // 年份回退说明 ECharts 重新扫描，重置跟踪
+            if (year < lastYear) shownYears.clear()
+            lastYear = year
+            if (shownYears.has(year)) {
+              return `${month}月`
+            }
+            shownYears.add(year)
+            return year
+          }
+        })()
       },
       axisTick: { show: false }
     },
