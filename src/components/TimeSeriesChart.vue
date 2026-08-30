@@ -128,12 +128,14 @@ function buildOption() {
           label: {
             show: true,
             formatter: '{b}',
-            position: 'insideEndBottom',
-            distance: 5,
+            position: 'start',
+            distance: 8,
             color: th.axisLabel,
-            fontSize: 10
+            fontSize: 10,
+            textBorderColor: props.isDark ? '#1b202b' : '#fff',
+            textBorderWidth: 2
           },
-          lineStyle: { width: 0, opacity: 0 }
+          lineStyle: { width: 1, type: 'dashed', opacity: 0.25, color: th.axisLabel }
         })
       }
       if (si % 2 === 1) {
@@ -269,7 +271,6 @@ function buildOption() {
       boundaryGap: false,
       axisLine: { lineStyle: { color: th.axisLine } },
       axisLabel: {
-        show: !hasSeg,
         color: th.axisLabel,
         fontSize: 11,
         formatter: (val) => val.substring(0, 4)
