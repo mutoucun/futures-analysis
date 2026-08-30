@@ -108,20 +108,31 @@ function buildOption() {
     contractACloses = dates.map(d => aMap.get(d) ?? null)
   }
 
-  // 换合约分段（真实数据才有）：交替色带 + 分段中点刻度标签 + tooltip 合约周期
+  // 换合约分段（真实数据才有）：交替色带 + 分段周期标签(markLine) + tooltip 合约周期
   const hasSeg = Array.isArray(segments) && segments.length > 1
-  const segLabelAt = new Map() // 采样索引(分段中点) -> 合约标签
   const segOfIndex = []        // 采样索引 -> 所属分段
   const bandData = []          // markArea 数据（奇数分段铺浅底，偶数分段留白形成交替）
+  const segMarkLines = []      // markLine 数据（分段周期标签，数据级元素跟随 dataZoom 正确移动）
   if (hasSeg) {
     for (let i = 0; i < dates.length; i++) segOfIndex[i] = null
     segments.forEach((seg, si) => {
       for (let i = seg.startIndex; i <= seg.endIndex && i < dates.length; i++) {
         segOfIndex[i] = seg
       }
-      // 分段太窄（采样点<4个，约不足一个月）不放下标签，避免重叠
-      if (seg.endIndex - seg.startIndex >= 3) {
-        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), `${slashDate(seg.start)}~${slashDate(seg.end)}`)
+      // 分段足够宽（采样点>=10个，约两个月以上）才显示周期标签
+      if (seg.endIndex - seg.startIndex >= 10) {
+        const midIdx = Math.round((seg.startIndex + seg.endIndex) / 2)
+        segMarkLines.push({
+          xAxis: dates[midIdx],
+          label: {
+            formatter: `${slashDate(seg.start)}~${slashDate(seg.end)}`,
+            position: 'start',
+            distance: 5,
+            fontSize: 10,
+            color: th.axisLabel
+          },
+          lineStyle: { color: th.splitLine, type: 'dashed', width: 0 }
+        })
       }
       if (si % 2 === 1) {
         bandData.push([
@@ -167,6 +178,12 @@ function buildOption() {
     lineStyle: { color: th.line, width: 1.5 },
     itemStyle: { color: th.line },
     markArea: bandData.length ? { silent: true, data: bandData } : undefined,
+    markLine: segMarkLines.length ? {
+      silent: true,
+      symbol: 'none',
+      animation: false,
+      data: segMarkLines
+    } : undefined,
     areaStyle: showA ? undefined : {
       color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
         { offset: 0, color: th.areaTop },
@@ -252,12 +269,9 @@ function buildOption() {
       axisLine: { lineStyle: { color: th.axisLine } },
       axisLabel: {
         color: th.axisLabel,
-        fontSize: hasSeg ? 10 : 11,
-        interval: hasSeg ? 0 : 'auto',
-        hideOverlap: hasSeg,
-        formatter: hasSeg
-          ? (val, idx) => (segLabelAt.has(idx) ? segLabelAt.get(idx) : '')
-          : (val) => val.substring(0, 4)
+        fontSize: 11,
+        interval: 'auto',
+        formatter: (val) => val.substring(0, 4)
       },
       axisTick: { show: false }
     },
