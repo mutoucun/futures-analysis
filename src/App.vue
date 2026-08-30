@@ -13,6 +13,24 @@
       </div>
       <div class="header-right">
         <button
+          class="refresh-btn"
+          :class="{ 'is-loading': isRefreshing, 'is-done': refreshDone }"
+          :disabled="isRefreshing"
+          :title="isRefreshing ? '正在获取最新数据...' : '从新浪获取最新日K数据'"
+          @click="handleRefresh"
+        >
+          <svg
+            v-if="refreshDone"
+            xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+          ><polyline points="20 6 9 17 4 12"/></svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          ><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button
           class="theme-btn"
           :title="isDark ? '切换到白天模式' : '切换到夜间模式'"
           @click="toggleTheme"
@@ -61,6 +79,13 @@
 
         <!-- 可滚动内容区：图表 + 数据表格 -->
         <main class="main-content">
+          <!-- 无真实数据空态 -->
+          <div v-if="noRealData" class="no-data-placeholder">
+            <p class="no-data-icon">📭</p>
+            <p class="no-data-text">该品种暂无历史数据</p>
+          </div>
+
+          <template v-else>
           <!-- 图表展示区 -->
           <div class="charts-area">
             <SeasonalChart
@@ -72,6 +97,7 @@
             />
             <TimeSeriesChart
               :time-series-data="timeSeriesData"
+              :contract-a-data="contractAData"
               :symbol-name="currentSymbolName"
               :cross-mode="currentCrossMode"
               :decimals="currentDecimals"
@@ -87,6 +113,7 @@
             :symbol-code="currentSymbol"
             @update:index-mode="onIndexModeChange"
           />
+          </template>
         </main>
       </div>
     </div>
@@ -99,6 +126,13 @@
       @confirm="onFavConfirm"
       @cancel="saveDialogVisible = false"
     />
+
+    <!-- 数据刷新结果提示 -->
+    <transition name="toast">
+      <div v-if="refreshToast" class="refresh-toast" :class="refreshToast.type">
+        {{ refreshToast.msg }}
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -140,6 +174,8 @@ import {
 } from './mock/data.js'
 // 真实数据按需加载：查询前动态导入对应 品种+月份 的 JSON（首屏 bundle 只含文件清单）
 import { ensureRealData } from './data/index.js'
+// 新浪实时数据刷新：点击刷新按钮从 Sina 拉取最新日K并合并进内存
+import { refreshAll, refreshAllFromServer } from './services/sina.js'
 
 const filterBarRef = ref(null)
 // 移动端合约列表抽屉开关（桌面端不使用）
@@ -158,6 +194,14 @@ const currentMonthB = ref('01')
 // '' = 单合约 | 'spread' = 价差（跨月/跨品种） | 'ratio' = 跨品种比值
 const currentCrossMode = ref('')
 const dataUpdateDate = ref(getDataUpdateDate())
+// 当前查询是否无真实数据（true 时图表区显示空态提示，不渲染 mock）
+const noRealData = ref(false)
+
+// ===== 数据刷新（从新浪拉取最新日K并合并）=====
+const isRefreshing = ref(false)
+const refreshDone = ref(false)
+const refreshToast = ref(null)
+let _refreshToastTimer = null
 
 // 白天 / 夜间主题（首屏已由前置脚本应用 html.dark 类）
 const isDark = ref(document.documentElement.classList.contains('dark'))
@@ -174,6 +218,7 @@ function toggleTheme() {
 
 const seasonalData = ref({ years: [], data: {} })
 const timeSeriesData = ref({ dates: [], closes: [] })
+const contractAData = ref(null) // 跨月/跨品种时：合约A原始价格 { dates, closes, name }
 const detailData = ref({ contracts: [], rows: [] })
 
 // ===== 收藏夹（参考浏览器书签：可存查询、分文件夹、前后移动）=====
@@ -222,16 +267,27 @@ async function fetchData(params) {
   const { symbol, contractMonth, yearRange, indexMode, analyzeType } = params
   const seq = ++querySeq
 
-  // 按需预加载真实数据 JSON：跨月价差需同品种两个月份，跨品种需两个品种同一月份；
-  // 无真实文件的品种/月份 ensureRealData 返回 false，后续取数自动回退 mock
+  // 按需预加载真实数据 JSON：跨月价差需同品种两个月份，跨品种需两个品种同一月份
   const loads = [ensureRealData(symbol, contractMonth)]
   if (analyzeType === 'crossMonth') {
     loads.push(ensureRealData(symbol, params.contractMonthB))
   } else if (analyzeType === 'crossSymbol' || analyzeType === 'crossRatio') {
     loads.push(ensureRealData(params.symbolB, contractMonth))
   }
-  await Promise.all(loads)
+  const results = await Promise.all(loads)
   if (seq !== querySeq) return // 已有更新的查询发出，丢弃本次过期结果
+
+  // 主查询无真实数据时，不渲染图表，显示空态提示
+  if (!results[0]) {
+    noRealData.value = true
+    seasonalData.value = null
+    timeSeriesData.value = null
+    detailData.value = null
+    currentSymbol.value = symbol
+    currentContractMonth.value = contractMonth
+    return
+  }
+  noRealData.value = false
 
   // 真实数据就绪后刷新顶部"数据更新"日期（首次加载前显示 mock 兜底日期）
   dataUpdateDate.value = getDataUpdateDate()
@@ -251,6 +307,7 @@ async function fetchData(params) {
     currentIndexMode.value = 'absolute'
     seasonalData.value = getCrossMonthSeasonalData(symbol, contractMonth, monthB, yearRange)
     timeSeriesData.value = getCrossMonthTimeSeriesData(symbol, contractMonth, monthB)
+    contractAData.value = { ...getTimeSeriesData(symbol, contractMonth), name: `${findSymbol(symbol).name} ${contractMonth}月` }
     detailData.value = getCrossMonthDetailData(symbol, contractMonth, monthB, yearRange)
   } else if (analyzeType === 'crossSymbol' || analyzeType === 'crossRatio') {
     // 跨品种价差 / 比值：两个品种、同一合约月份
@@ -261,6 +318,7 @@ async function fetchData(params) {
     currentIndexMode.value = 'absolute'
     seasonalData.value = getCrossSeasonalData(symbol, symbolB, contractMonth, yearRange, crossMode)
     timeSeriesData.value = getCrossTimeSeriesData(symbol, symbolB, contractMonth, crossMode)
+    contractAData.value = { ...getTimeSeriesData(symbol, contractMonth), name: `${findSymbol(symbol).name} ${contractMonth}月` }
     detailData.value = getCrossMonthlyDetailData(symbol, symbolB, contractMonth, crossMode, yearRange)
   } else {
     // 单合约：指标模式保留表头当前选择（初始加载时由入参指定）
@@ -268,6 +326,7 @@ async function fetchData(params) {
     if (indexMode) currentIndexMode.value = indexMode
     seasonalData.value = getSeasonalData(symbol, contractMonth, yearRange)
     timeSeriesData.value = getTimeSeriesData(symbol, contractMonth)
+    contractAData.value = null
     detailData.value = getMonthlyDetailData(symbol, contractMonth, currentIndexMode.value, yearRange)
   }
 }
@@ -403,6 +462,60 @@ function onDeleteNode(id) {
   persistFavorites()
 }
 
+/**
+ * 刷新按钮：从新浪获取当前查看品种的最新日K数据
+ * 合并进内存后重新执行查询，图表自动更新，无需重新构建
+ */
+async function handleRefresh() {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  refreshDone.value = false
+  refreshToast.value = null
+  if (_refreshToastTimer) { clearTimeout(_refreshToastTimer); _refreshToastTimer = null }
+
+  try {
+    // 获取当前查询参数（优先 FilterBar 最新状态）
+    const fb = filterBarRef.value
+    const query = fb ? fb.getQuery() : {
+      analyzeType: currentAnalyzeType.value,
+      symbol: currentSymbol.value,
+      contractMonth: currentContractMonth.value,
+      symbolB: currentSymbolB.value,
+      contractMonthB: currentMonthB.value,
+      yearRange: currentYearRange.value,
+      indexMode: currentIndexMode.value
+    }
+
+    // 提示用户正在更新（Python 脚本需约 1 分钟）
+    refreshToast.value = { type: 'info', msg: '正在从交易所拉取最新数据，请稍候…' }
+
+    const result = await refreshAllFromServer(query)
+
+    if (result.success) {
+      // 更新顶部日期显示
+      dataUpdateDate.value = getDataUpdateDate()
+      noRealData.value = false
+      // 重新执行当前查询以刷新图表
+      await fetchData(query)
+      // 按钮切换为成功状态
+      refreshDone.value = true
+      const msg = result.pointsAdded > 0
+        ? `数据已更新（${result.contractsUpdated} 个合约，+${result.pointsAdded} 个新数据点）`
+        : `已是最新（${result.contractsUpdated} 个合约）`
+      refreshToast.value = { type: 'success', msg }
+      setTimeout(() => { refreshDone.value = false }, 2500)
+    } else {
+      refreshToast.value = { type: 'error', msg: result.error || '更新失败，请检查本地服务是否启动' }
+    }
+  } catch (err) {
+    refreshToast.value = { type: 'error', msg: `刷新异常: ${err.message || err}` }
+  } finally {
+    isRefreshing.value = false
+    // Toast 5 秒后自动消失（更新过程较长，给更多阅读时间）
+    _refreshToastTimer = setTimeout(() => { refreshToast.value = null }, 5000)
+  }
+}
+
 function handleQuery(params) {
   fetchData(params)
 }
@@ -472,11 +585,11 @@ onMounted(() => {
   --accent-border: #c8dcf5;
   --accent-disabled-bg: #c5d5ec;
   --accent-focus: rgba(26, 111, 224, 0.1);
-  /* 红涨绿跌 */
-  --up-text: #d4380d;
-  --up-bg: #fff1f0;
-  --down-text: #0b7a3e;
-  --down-bg: #f0fff4;
+  /* 红涨绿跌：深底白字 */
+  --up-text: #fff;
+  --up-bg: #cf1322;
+  --down-text: #fff;
+  --down-bg: #389e0d;
   --flat-text: #666;
   --flat-bg: #fafafa;
   --na-text: #ccc;
@@ -520,11 +633,11 @@ html.dark {
   --accent-border: #33507a;
   --accent-disabled-bg: #2c3a52;
   --accent-focus: rgba(77, 148, 240, 0.18);
-  /* 红涨绿跌：深底上用高明度红绿 */
-  --up-text: #f5704e;
-  --up-bg: #3a2320;
-  --down-text: #3ecf8e;
-  --down-bg: #1c3229;
+  /* 红涨绿跌：深底白字 */
+  --up-text: #fff;
+  --up-bg: #a61d24;
+  --down-text: #fff;
+  --down-bg: #237804;
   --flat-text: #98a1b3;
   --flat-bg: #212736;
   --na-text: #4d5666;
@@ -655,6 +768,112 @@ body {
   background: var(--accent-bg);
 }
 
+/* 刷新数据按钮 */
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text-666);
+  background: var(--bg-card);
+  border: 1px solid var(--border-ctrl);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.refresh-btn.is-loading svg {
+  animation: spin 0.8s linear infinite;
+}
+
+.refresh-btn.is-done {
+  color: #3ecf8e;
+  border-color: #3ecf8e;
+  background: #f0fff4;
+}
+
+html.dark .refresh-btn.is-done {
+  color: #3ecf8e;
+  border-color: #2a6b4e;
+  background: #1c3229;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 刷新结果 Toast 提示 */
+.refresh-toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.refresh-toast.success {
+  background: #f0fff4;
+  color: #0b7a3e;
+  border: 1px solid #b7eb8f;
+}
+
+html.dark .refresh-toast.success {
+  background: #1c3229;
+  color: #3ecf8e;
+  border-color: #2a6b4e;
+}
+
+.refresh-toast.error {
+  background: #fff1f0;
+  color: #d4380d;
+  border: 1px solid #ffa39e;
+}
+
+html.dark .refresh-toast.error {
+  background: #3a2320;
+  color: #f5704e;
+  border-color: #6b3028;
+}
+
+.refresh-toast.info {
+  background: #e6f7ff;
+  color: #096dd9;
+  border: 1px solid #91d5ff;
+}
+
+html.dark .refresh-toast.info {
+  background: #112a45;
+  color: #69c0ff;
+  border-color: #15508a;
+}
+
+.toast-enter-active, .toast-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-enter-from, .toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
 .update-info {
   font-size: 12px;
   color: var(--text-tertiary);
@@ -695,6 +914,26 @@ body {
    保持自然高度溢出后由 .main-content 整页滚动 */
 .main-content > * {
   flex-shrink: 0;
+}
+
+.no-data-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 12px;
+}
+.no-data-icon {
+  font-size: 48px;
+  margin: 0;
+  opacity: 0.6;
+}
+.no-data-text {
+  font-size: 15px;
+  color: var(--text-secondary, #888);
+  margin: 0;
 }
 
 .charts-area {
@@ -755,6 +994,27 @@ body {
 
   .charts-area {
     gap: 10px;
+  }
+
+  .no-data-placeholder {
+    min-height: 200px;
+  }
+
+  .no-data-icon {
+    font-size: 36px;
+  }
+
+  .no-data-text {
+    font-size: 14px;
+  }
+
+  /* Toast 在移动端需要更靠近顶部（header 矮了 4px） */
+  .refresh-toast {
+    top: 54px;
+    font-size: 12px;
+    padding: 7px 14px;
+    max-width: calc(100vw - 24px);
+    text-align: center;
   }
 }
 </style>

@@ -423,5 +423,28 @@ html.dark .select-ctrl {
     width: 100%;
     padding: 9px 0;
   }
+
+  /* 分析类型单选组在窄屏允许换行 */
+  .radio-group {
+    flex-wrap: wrap;
+  }
+
+  .radio-item {
+    font-size: 13px;
+  }
+
+  .type-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+    margin-top: 2px;
+  }
+
+  .select-label {
+    font-size: 12px;
+  }
+
+  .filter-label {
+    font-size: 12px;
+  }
 }
 </style>

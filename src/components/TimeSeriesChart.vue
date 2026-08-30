@@ -2,9 +2,18 @@
   <div class="chart-card">
     <div class="chart-header">
       <span class="chart-title">连续时序图</span>
-      <button class="toggle-btn" @click="toggleExpand">
-        {{ expanded ? '收起' : '展开' }}
-      </button>
+      <div class="header-actions">
+        <button
+          v-if="props.crossMode && props.contractAData"
+          :class="['toggle-btn', { active: showContractA }]"
+          @click="toggleContractA"
+        >
+          {{ showContractA ? '隐藏' : '显示' }}合约A价格
+        </button>
+        <button class="toggle-btn" @click="toggleExpand">
+          {{ expanded ? '收起' : '展开' }}
+        </button>
+      </div>
     </div>
     <div class="chart-body">
       <div ref="chartRef" :class="['chart-container', { expanded: expanded }]"></div>
@@ -18,6 +27,7 @@ import * as echarts from 'echarts'
 
 const props = defineProps({
   timeSeriesData: { type: Object, default: () => ({ dates: [], closes: [] }) },
+  contractAData: { type: Object, default: null }, // { dates, closes, name } or null
   symbolName: { type: String, default: '' },
   crossMode: { type: String, default: '' }, // '' | 'spread' | 'ratio'
   decimals: { type: Number, default: 2 }, // 价格显示小数位（按品种最小变动价位）
@@ -42,7 +52,8 @@ const chartTheme = computed(() => props.isDark ? {
   zoomHandle: '#4d94f0',
   zoomText: '#7d8798',
   band: 'rgba(255,255,255,0.045)',
-  tooltipSub: '#8a93a6'
+  tooltipSub: '#8a93a6',
+  lineA: '#e8a735'
 } : {
   axisLine: '#d9d9d9',
   axisLabel: '#666',
@@ -60,11 +71,13 @@ const chartTheme = computed(() => props.isDark ? {
   zoomHandle: '#1a6fe0',
   zoomText: '#999',
   band: 'rgba(0,0,0,0.035)',
-  tooltipSub: '#999'
+  tooltipSub: '#999',
+  lineA: '#d4880f'
 })
 
 const chartRef = ref(null)
 const expanded = ref(false)
+const showContractA = ref(true)
 let chart = null
 
 function toggleExpand() {
@@ -74,12 +87,26 @@ function toggleExpand() {
   })
 }
 
+function toggleContractA() {
+  showContractA.value = !showContractA.value
+  nextTick(renderChart)
+}
+
 function buildOption() {
   const { dates, closes, segments } = props.timeSeriesData
   const th = chartTheme.value
 
   // 日期显示用斜线格式：2024-10-08 -> 2024/10/08
   const slashDate = (d) => String(d).split('-').join('/')
+
+  // 合约A价格对齐到价差时序轴（按日期匹配）
+  const showA = showContractA.value && props.contractAData && props.contractAData.closes && props.contractAData.closes.length > 0
+  let contractACloses = null
+  if (showA) {
+    const aMap = new Map()
+    props.contractAData.dates.forEach((d, i) => aMap.set(d, props.contractAData.closes[i]))
+    contractACloses = dates.map(d => aMap.get(d) ?? null)
+  }
 
   // 换合约分段（真实数据才有）：交替色带 + 分段中点刻度标签 + tooltip 合约周期
   const hasSeg = Array.isArray(segments) && segments.length > 1
@@ -105,6 +132,62 @@ function buildOption() {
     })
   }
 
+  // Y轴配置：左侧为主（价差/比值），右侧为合约A价格（仅showA时显示）
+  const yAxisList = [{
+    type: 'value',
+    name: '收盘价',
+    nameTextStyle: { color: th.axisLabel, fontSize: 12 },
+    scale: true,
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: { color: th.axisLabel, fontSize: 12 },
+    splitLine: { lineStyle: { color: th.splitLine, type: 'dashed' } }
+  }]
+  if (showA) {
+    yAxisList.push({
+      type: 'value',
+      name: props.contractAData.name || '合约A',
+      nameTextStyle: { color: th.lineA, fontSize: 12 },
+      scale: true,
+      position: 'right',
+      axisLine: { show: true, lineStyle: { color: th.lineA } },
+      axisTick: { show: false },
+      axisLabel: { color: th.lineA, fontSize: 12 },
+      splitLine: { show: false }
+    })
+  }
+
+  // 系列：主系列（价差/比值）+ 可选合约A
+  const seriesList = [{
+    name: props.symbolName || '收盘价',
+    type: 'line',
+    data: closes,
+    showSymbol: false,
+    smooth: false,
+    lineStyle: { color: th.line, width: 1.5 },
+    itemStyle: { color: th.line },
+    markArea: bandData.length ? { silent: true, data: bandData } : undefined,
+    areaStyle: showA ? undefined : {
+      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: th.areaTop },
+        { offset: 1, color: th.areaBottom }
+      ])
+    }
+  }]
+  if (showA) {
+    seriesList.push({
+      name: props.contractAData.name || '合约A',
+      type: 'line',
+      yAxisIndex: 1,
+      data: contractACloses,
+      showSymbol: false,
+      smooth: false,
+      lineStyle: { color: th.lineA, width: 1.5, type: 'dashed' },
+      itemStyle: { color: th.lineA },
+      connectNulls: true
+    })
+  }
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -126,13 +209,21 @@ function buildOption() {
         const segLine = seg
           ? `<div style="margin-top:4px;font-size:11px;color:${th.tooltipSub}">合约 ${seg.label}（${slashDate(seg.start)} ~ ${slashDate(seg.end)}）</div>`
           : ''
+        // 合约A价格（tooltip 第二行）
+        let aLine = ''
+        if (showA && params.length > 1) {
+          const pa = params[1]
+          if (pa.value != null) {
+            aLine = `<div style="margin-top:3px"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${th.lineA};margin-right:5px"></span>${props.contractAData.name}：<b>${pa.value.toFixed(props.decimals)}</b></div>`
+          }
+        }
         return `<div style="font-weight:600">${p.axisValue}</div>${segLine}
-          <div style="margin-top:4px">${p.marker} 收盘价：<b>${val}</b></div>`
+          <div style="margin-top:4px">${p.marker} ${props.crossMode ? '价差' : '收盘价'}：<b>${val}</b></div>${aLine}`
       }
     },
     grid: {
       left: 70,
-      right: 20,
+      right: showA ? 75 : 20,
       top: 30,
       bottom: 60
     },
@@ -162,9 +253,6 @@ function buildOption() {
       axisLabel: {
         color: th.axisLabel,
         fontSize: hasSeg ? 10 : 11,
-        // 有分段：只在分段中点横排打"开始~结束日期"标签，
-        // 色带密集放不下时由 hideOverlap 自动隐藏（缩放放大后会重新显示）；
-        // 无分段：自动间隔显示年份
         interval: hasSeg ? 0 : 'auto',
         hideOverlap: hasSeg,
         formatter: hasSeg
@@ -173,35 +261,8 @@ function buildOption() {
       },
       axisTick: { show: false }
     },
-    yAxis: {
-      type: 'value',
-      name: '收盘价',
-      nameTextStyle: { color: th.axisLabel, fontSize: 12 },
-      scale: true,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: th.axisLabel, fontSize: 12 },
-      splitLine: { lineStyle: { color: th.splitLine, type: 'dashed' } }
-    },
-    series: [
-      {
-        name: props.symbolName || '收盘价',
-        type: 'line',
-        data: closes,
-        showSymbol: false,
-        smooth: false,
-        lineStyle: { color: th.line, width: 1.5 },
-        itemStyle: { color: th.line },
-        // 换合约交替色带：标识不同合约的接管区间
-        markArea: bandData.length ? { silent: true, data: bandData } : undefined,
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: th.areaTop },
-            { offset: 1, color: th.areaBottom }
-          ])
-        }
-      }
-    ]
+    yAxis: yAxisList,
+    series: seriesList
   }
 }
 
@@ -226,6 +287,11 @@ watch(() => [props.crossMode, props.decimals], () => {
 watch(() => props.isDark, () => {
   nextTick(renderChart)
 })
+
+watch(() => props.contractAData, () => {
+  showContractA.value = true
+  nextTick(renderChart)
+}, { deep: true })
 
 onMounted(() => {
   chart = echarts.init(chartRef.value)
@@ -265,6 +331,12 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--border-light);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .chart-title {
   font-size: 14px;
   font-weight: 600;
@@ -284,6 +356,12 @@ onBeforeUnmount(() => {
 
 .toggle-btn:hover {
   background: var(--accent-bg-hover);
+}
+
+.toggle-btn.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .chart-body {
@@ -306,6 +384,23 @@ onBeforeUnmount(() => {
     padding: 10px 12px;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .toggle-btn {
+    padding: 5px 12px;
+    font-size: 11px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+  }
+
+  .chart-body {
+    padding: 8px 8px 10px;
   }
 
   .chart-container {

@@ -242,4 +242,43 @@ function cancel() {
   border-color: var(--accent-disabled-bg);
   cursor: not-allowed;
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  .dialog-card {
+    max-width: calc(100vw - 24px);
+    padding: 16px 16px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+
+  .dialog-input {
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .dialog-label {
+    font-size: 13px;
+  }
+
+  /* 文件夹选项触控友好 */
+  .folder-opt {
+    padding: 8px 8px;
+    font-size: 14px;
+  }
+
+  /* 底部按钮通栏触控 */
+  .dialog-actions {
+    gap: 8px;
+  }
+
+  .dialog-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
 </style>

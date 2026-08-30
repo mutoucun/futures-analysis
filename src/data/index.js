@@ -40,6 +40,112 @@ for (const path of Object.keys(loaders)) {
 const loadedPayloads = {}
 const pendingLoads = {}
 
+// ============ 实时数据覆盖层 ============
+// refreshSinaData 拉取的新浪最新日K通过 updateLiveContracts 直接合并进
+// loadedPayloads，后续 getRealContracts() 自动返回合并后的数据。
+// 这样所有下游计算函数（季节性/时序/明细）无需任何改动即可获得最新数据。
+let liveUpdatedAt = null
+
+/**
+ * 合并新浪实时数据到已加载的 JSON payload（原地更新内存缓存）
+ * @param {string} symbolCode 品种代码
+ * @param {string} contractMonth 合约月份
+ * @param {Map<number, Array<{date, close}>>} sinaData deliveryYear -> series
+ * @returns {{ contractsUpdated: number, pointsAdded: number }}
+ */
+export function updateLiveContracts(symbolCode, contractMonth, sinaData) {
+  const key = `${symbolCode}_${contractMonth}`
+  let stats = { contractsUpdated: 0, pointsAdded: 0 }
+
+  // 如果没有基础 JSON，创建合成 payload（仅含 Sina 数据）
+  if (!loadedPayloads[key]) {
+    const sym = _findSym(symbolCode)
+    const contracts = []
+    for (const [deliveryYear, series] of sinaData) {
+      if (series.length === 0) continue
+      contracts.push({
+        code: `${symbolCode.toLowerCase()}${String(deliveryYear).slice(2)}${contractMonth}`,
+        deliveryYear,
+        series: series.map(p => ({ date: p.date, close: p.close }))
+      })
+    }
+    if (contracts.length === 0) return stats
+    loadedPayloads[key] = {
+      symbol: symbolCode,
+      contractMonth,
+      unit: sym ? sym.unit : '',
+      updatedAt: new Date().toISOString().slice(0, 10),
+      contracts
+    }
+    // 同步注册到 realDataLoaders 以便 hasRealData 能识别
+    realDataLoaders[key] = realDataLoaders[key] || (() => Promise.resolve(loadedPayloads[key]))
+    stats.contractsUpdated = contracts.length
+    stats.pointsAdded = contracts.reduce((s, c) => s + c.series.length, 0)
+    return stats
+  }
+
+  // 有基础 JSON：逐合约合并（按 date 去重，Sina 数据优先覆盖）
+  const payload = loadedPayloads[key]
+  const byYear = new Map(payload.contracts.map(c => [c.deliveryYear, c]))
+
+  for (const [deliveryYear, sinaSeries] of sinaData) {
+    if (sinaSeries.length === 0) continue
+    const existing = byYear.get(deliveryYear)
+
+    if (!existing) {
+      // 新合约：直接添加
+      const newContract = {
+        code: `${symbolCode.toLowerCase()}${String(deliveryYear).slice(2)}${contractMonth}`,
+        deliveryYear,
+        series: sinaSeries.map(p => ({ date: p.date, close: p.close }))
+      }
+      payload.contracts.push(newContract)
+      byYear.set(deliveryYear, newContract)
+      stats.contractsUpdated++
+      stats.pointsAdded += sinaSeries.length
+    } else {
+      // 已有合约：按日期合并（Sina 覆盖同日期旧值，新日期追加）
+      const dateMap = new Map(existing.series.map(p => [p.date, p.close]))
+      let added = 0
+      for (const p of sinaSeries) {
+        if (!dateMap.has(p.date)) added++
+        dateMap.set(p.date, p.close)
+      }
+      existing.series = [...dateMap.entries()]
+        .sort((a, b) => a[0] < b[0] ? -1 : 1)
+        .map(([date, close]) => ({ date, close }))
+      stats.pointsAdded += added
+      stats.contractsUpdated++
+    }
+  }
+
+  payload.updatedAt = new Date().toISOString().slice(0, 10)
+  return stats
+}
+
+/** 设置实时数据最近更新时间（由 sina.js refreshAll 调用） */
+export function setLiveUpdatedAt(dateStr) {
+  liveUpdatedAt = dateStr
+}
+
+/**
+ * 用服务端返回的完整 JSON 替换内存中的 payload。
+ * 供 /api/update 刷新后直接注入最新数据（无需重新加载 chunk）。
+ */
+export function replacePayload(symbolCode, contractMonth, payload) {
+  const key = `${symbolCode}_${contractMonth}`
+  if (payload && payload.contracts) {
+    loadedPayloads[key] = payload
+  }
+}
+
+/** 内部工具：从 EXCHANGES 查找品种（避免循环依赖 mock/data.js） */
+function _findSym(code) {
+  // 延迟引用，因为 EXCHANGES 在 mock/data.js 中定义，
+  // 这里通过 tryImport 或直接返回 null 降级处理
+  return null
+}
+
 /** 是否存在指定 品种+合约月份 的真实数据（同步，仅查文件清单） */
 export function hasRealData(symbolCode, contractMonth) {
   return !!realDataLoaders[`${symbolCode}_${contractMonth}`]
@@ -98,11 +204,13 @@ export function hasAnyRealData(symbolCode) {
   return Object.keys(realDataLoaders).some(key => key.startsWith(`${symbolCode}_`))
 }
 
-/** 真实数据的最新更新日期（取已加载文件中的最大值），无则返回 null */
+/** 真实数据的最新更新日期（取已加载文件中的最大值 + 实时刷新时间），无则返回 null */
 export function getRealDataUpdateDate() {
   let max = null
   for (const payload of Object.values(loadedPayloads)) {
     if (payload.updatedAt && (!max || payload.updatedAt > max)) max = payload.updatedAt
   }
+  // 实时刷新时间可能比任何 JSON 文件更新
+  if (liveUpdatedAt && (!max || liveUpdatedAt > max)) max = liveUpdatedAt
   return max
 }

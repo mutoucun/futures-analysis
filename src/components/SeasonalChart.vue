@@ -156,6 +156,27 @@ function buildOption() {
   const dates = props.seasonalData.dates || []
   const maxYear = visibleYears.value.length ? Math.max(...visibleYears.value) : 0
 
+  // 动态 Y 轴范围：紧贴可见年份所有数据点的实际价格上下限，留 2% 呼吸空间
+  let yMin = Infinity, yMax = -Infinity
+  for (const year of visibleYears.value) {
+    const arr = props.seasonalData.data[year]
+    if (!arr) continue
+    for (const v of arr) {
+      if (v !== null && v !== undefined) {
+        if (v < yMin) yMin = v
+        if (v > yMax) yMax = v
+      }
+    }
+  }
+  if (yMin !== Infinity && yMax !== -Infinity && yMax > yMin) {
+    const pad = (yMax - yMin) * 0.02
+    yMin = Math.floor((yMin - pad) * 100) / 100
+    yMax = Math.ceil((yMax + pad) * 100) / 100
+  } else {
+    yMin = undefined
+    yMax = undefined
+  }
+
   // 横轴刻度：每月首个交易日显示「X月」，其余刻度隐藏
   const monthLabelAt = new Map()
   let lastMonth = ''
@@ -257,6 +278,8 @@ function buildOption() {
     yAxis: {
       type: 'value',
       name: yAxisName.value,
+      min: yMin,
+      max: yMax,
       scale: true,
       nameTextStyle: { color: th.axisLabel, fontSize: 12, padding: [0, 0, 0, -20] },
       axisLine: { show: false },
@@ -574,6 +597,28 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 
+  .chart-title {
+    font-size: 13px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .sort-toggle-label {
+    font-size: 11px;
+  }
+
+  .sort-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .toggle-btn {
+    padding: 4px 12px;
+    font-size: 11px;
+  }
+
   .chart-body {
     flex-direction: column;
     padding: 8px 8px 12px;
@@ -593,6 +638,11 @@ onBeforeUnmount(() => {
     border-top: 1px dashed var(--border-light);
     margin-top: 10px;
     padding-top: 10px;
+  }
+
+  .year-panel-title {
+    font-size: 11px;
+    margin-bottom: 6px;
   }
 
   .year-list {

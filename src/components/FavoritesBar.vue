@@ -419,4 +419,67 @@ function dropClass(id) {
   inset: 0;
   z-index: 150;
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  .fav-bar {
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .fav-bar-label {
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .fav-empty {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .fav-items {
+    gap: 5px;
+  }
+
+  /* 触控友好的芯片尺寸 */
+  .fav-chip {
+    padding: 6px 10px;
+    font-size: 12px;
+    max-width: 180px;
+  }
+
+  /* 移动端无 hover，删除按钮常驻显示 */
+  .chip-ctrl {
+    display: inline-flex !important;
+  }
+
+  .ctrl-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  /* 文件夹下拉在移动端尽量宽 */
+  .folder-dropdown {
+    min-width: 180px;
+    max-width: calc(100vw - 40px);
+    left: auto;
+    right: 0;
+  }
+
+  .fi-name {
+    padding: 7px 6px;
+    font-size: 13px;
+  }
+
+  .folder-item {
+    padding: 3px 4px;
+  }
+
+  /* 文件夹内删除按钮也常驻 */
+  .fi-ctrl {
+    display: inline-flex !important;
+  }
+}
 </style>

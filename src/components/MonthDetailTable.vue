@@ -461,5 +461,21 @@ function exportCSV() {
   .stat-down {
     display: block;
   }
+
+  /* 导出按钮触控友好 */
+  .export-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* 指标模式切换按钮触控友好 */
+  .mode-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .index-mode-label {
+    font-size: 11px;
+  }
 }
 </style>

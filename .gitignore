@@ -16,3 +16,6 @@ Desktop.ini
 *.local
 .vscode/
 .idea/
+
+# 构建日志
+build_output.log

@@ -50,7 +50,15 @@ export const EXCHANGES = [
       { code: 'L', name: '塑料', category: '能源化工', price: 8300, unit: '元/吨', startYear: 2007, tick: 5 },
       { code: 'PP', name: '聚丙烯', category: '能源化工', price: 7400, unit: '元/吨', startYear: 2014, tick: 1 },
       { code: 'V', name: 'PVC', category: '能源化工', price: 6100, unit: '元/吨', startYear: 2009, tick: 5 },
-      { code: 'EG', name: '乙二醇', category: '能源化工', price: 4600, unit: '元/吨', startYear: 2018, tick: 1 }
+      { code: 'EG', name: '乙二醇', category: '能源化工', price: 4600, unit: '元/吨', startYear: 2018, tick: 1 },
+      { code: 'BB', name: '胶合板', category: '板材', price: 130, unit: '元/张', startYear: 2013, tick: 0.05 },
+      { code: 'CS', name: '玉米淀粉', category: '农产品', price: 2800, unit: '元/吨', startYear: 2014, tick: 1 },
+      { code: 'EB', name: '苯乙烯', category: '能源化工', price: 8500, unit: '元/吨', startYear: 2019, tick: 1 },
+      { code: 'FB', name: '纤维板', category: '板材', price: 1200, unit: '元/张', startYear: 2019, tick: 0.5 },
+      { code: 'JD', name: '鸡蛋', category: '农产品', price: 4200, unit: '元/500千克', startYear: 2013, tick: 1 },
+      { code: 'LH', name: '生猪', category: '农产品', price: 15000, unit: '元/吨', startYear: 2021, tick: 5 },
+      { code: 'PG', name: '液化石油气', category: '能源化工', price: 4500, unit: '元/吨', startYear: 2020, tick: 1 },
+      { code: 'RR', name: '粳米', category: '农产品', price: 3300, unit: '元/吨', startYear: 2019, tick: 1 }
     ]
   },
   {
@@ -68,7 +76,16 @@ export const EXCHANGES = [
       { code: 'RM', name: '菜粕', category: '农产品', price: 2500, unit: '元/吨', startYear: 2012, tick: 1 },
       { code: 'OI', name: '菜油', category: '农产品', price: 9800, unit: '元/吨', startYear: 2007, tick: 1 },
       { code: 'SF', name: '硅铁', category: '黑色系', price: 6800, unit: '元/吨', startYear: 2014, tick: 2 },
-      { code: 'SM', name: '锰硅', category: '黑色系', price: 6200, unit: '元/吨', startYear: 2014, tick: 2 }
+      { code: 'SM', name: '锰硅', category: '黑色系', price: 6200, unit: '元/吨', startYear: 2014, tick: 2 },
+      { code: 'CJ', name: '红枣', category: '农产品', price: 10000, unit: '元/吨', startYear: 2019, tick: 5 },
+      { code: 'LC', name: '碳酸锂', category: '能源化工', price: 80000, unit: '元/吨', startYear: 2023, tick: 50 },
+      { code: 'PF', name: '短纤', category: '能源化工', price: 7000, unit: '元/吨', startYear: 2020, tick: 2 },
+      { code: 'PK', name: '花生', category: '农产品', price: 9000, unit: '元/吨', startYear: 2021, tick: 2 },
+      { code: 'PR', name: '纯苯', category: '能源化工', price: 7500, unit: '元/吨', startYear: 2024, tick: 1 },
+      { code: 'PX', name: '对二甲苯', category: '能源化工', price: 8500, unit: '元/吨', startYear: 2023, tick: 2 },
+      { code: 'SH', name: '烧碱', category: '能源化工', price: 2800, unit: '元/吨', startYear: 2023, tick: 1 },
+      { code: 'SI', name: '工业硅', category: '能源化工', price: 12000, unit: '元/吨', startYear: 2022, tick: 5 },
+      { code: 'UR', name: '尿素', category: '能源化工', price: 1800, unit: '元/吨', startYear: 2019, tick: 1 }
     ]
   },
   {
@@ -81,7 +98,9 @@ export const EXCHANGES = [
       { code: 'IH', name: '上证50', category: '金融期货', price: 2600, unit: '点', startYear: 2015, tick: 0.2 },
       { code: 'IM', name: '中证1000', category: '金融期货', price: 6200, unit: '点', startYear: 2022, tick: 0.2 },
       { code: 'T', name: '十年国债', category: '金融期货', price: 104, unit: '元', startYear: 2015, tick: 0.01 },
-      { code: 'TF', name: '五年国债', category: '金融期货', price: 102, unit: '元', startYear: 2013, tick: 0.005 }
+      { code: 'TF', name: '五年国债', category: '金融期货', price: 102, unit: '元', startYear: 2013, tick: 0.005 },
+      { code: 'TL', name: '三十年国债', category: '金融期货', price: 110, unit: '元', startYear: 2023, tick: 0.01 },
+      { code: 'TS', name: '两年国债', category: '金融期货', price: 101, unit: '元', startYear: 2018, tick: 0.005 }
     ]
   },
   {
@@ -92,13 +111,15 @@ export const EXCHANGES = [
       { code: 'SC', name: '原油', category: '能源化工', price: 540, unit: '元/桶', startYear: 2018, tick: 0.1 },
       { code: 'NR', name: '20号胶', category: '能源化工', price: 11200, unit: '元/吨', startYear: 2019, tick: 5 },
       { code: 'LU', name: '低硫燃油', category: '能源化工', price: 3800, unit: '元/吨', startYear: 2020, tick: 1 },
-      { code: 'BC', name: '国际铜', category: '有色金属', price: 63000, unit: '元/吨', startYear: 2020, tick: 10 }
+      { code: 'BC', name: '国际铜', category: '有色金属', price: 63000, unit: '元/吨', startYear: 2020, tick: 10 },
+      { code: 'AO', name: '氧化铝', category: '有色金属', price: 3800, unit: '元/吨', startYear: 2023, tick: 1 },
+      { code: 'EC', name: '集运指数', category: '能源化工', price: 3000, unit: '点', startYear: 2023, tick: 0.1 }
     ]
   }
 ]
 
 // 品种类别列表
-export const CATEGORIES = ['黑色系', '有色金属', '贵金属', '能源化工', '农产品', '金融期货']
+export const CATEGORIES = ['黑色系', '有色金属', '贵金属', '能源化工', '农产品', '板材', '金融期货']
 
 // 合约月份选项
 export const CONTRACT_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
@@ -392,10 +413,7 @@ function mergeContractSeries(contracts, ownerOf, labelOf) {
  * @returns {{dates, closes, segments: Array<{owner, label, start, end, startIndex, endIndex}>}}
  */
 function sampleSeriesWithSegments(series) {
-  const sampled = series.filter((_, i) => i % 5 === 0)
-  if (series.length > 0 && sampled[sampled.length - 1] !== series[series.length - 1]) {
-    sampled.push(series[series.length - 1])
-  }
+  const sampled = series // 保留日K全量数据，不降采样
 
   // 完整序列上的所属合约分段（start/end 为合约真实首尾交易日）
   const rawSegs = []
@@ -687,25 +705,26 @@ function computeRealMonthlyDetail(contracts, symbolCode, contractMonth, indexMod
       continue
     }
 
-    // 月末收盘价：在合约自身序列中查找（序列覆盖上市年9月~交割年9月）
-    const monthEndClose = (y, m) => {
-      const prefix = `${y}-${String(m).padStart(2, '0')}`
-      let last = null
-      for (const p of c.series) {
-        if (p.date.startsWith(prefix)) last = p.close
-      }
-      return last
+    // 按时间顺序提取月末收盘价，计算逐月涨跌
+    // 兼容新浪（~1年跨度）和 wh6（~2年跨度）两种数据分布
+    const monthEnds = new Map()
+    for (const p of c.series) {
+      monthEnds.set(p.date.slice(0, 7), p.close) // "YYYY-MM" -> 该月最后一个收盘价
     }
 
     for (let month = 1; month <= 12; month++) {
-      if (month > expiryMonth) {
-        values.push(null)
-        continue
-      }
-      const cur = monthEndClose(year, month)
-      // 1月以本合约上市年12月末收盘为基准，其余与上月末比较
-      const prev = month === 1 ? monthEndClose(year - 1, 12) : monthEndClose(year, month - 1)
-      if (cur === null || prev === null || prev === 0) {
+      const mm = String(month).padStart(2, '0')
+      // 根据交割窗口确定实际年份（m>M 取上年，m≤M 取交割年），精确查找
+      const dataYear = month > expiryMonth ? year - 1 : year
+      const ymKey = `${dataYear}-${mm}`
+      const cur = monthEnds.get(ymKey)
+      if (cur === undefined) { values.push(null); continue }
+      // Bug fix 3: 计算上一个日历月的 key，而非依赖 sortedYM 索引
+      const prevMonth = month === 1 ? 12 : month - 1
+      const prevYear = month === 1 ? dataYear - 1 : dataYear
+      const prevMM = String(prevMonth).padStart(2, '0')
+      const prev = monthEnds.get(`${prevYear}-${prevMM}`)
+      if (prev === undefined || prev === 0) {
         values.push(null)
       } else if (indexMode === 'percent') {
         values.push(Math.round(((cur - prev) / prev) * 10000) / 100)
@@ -806,28 +825,28 @@ function computeRealCrossMonthlyDetail(pseudo, symA, symB, contractMonth, crossM
       continue
     }
 
-    // 月末水平：在伪合约（该年逐日价差/比值）序列中查找
-    const monthEndLevel = (y, m) => {
-      const prefix = `${y}-${String(m).padStart(2, '0')}`
-      let last = null
-      for (const p of c.series) {
-        if (p.date.startsWith(prefix)) last = p.close
-      }
-      return last
+    // 按时间顺序提取月末价差/比值水平，计算逐月涨跌
+    const monthEnds = new Map()
+    for (const p of c.series) {
+      monthEnds.set(p.date.slice(0, 7), p.close)
     }
 
     for (let month = 1; month <= 12; month++) {
-      if (month > expiryMonth) {
-        values.push(null)
-        continue
-      }
-      const cur = monthEndLevel(year, month)
+      const mm = String(month).padStart(2, '0')
+      // 根据交割窗口确定实际年份（m>M 取上年，m≤M 取交割年），精确查找
+      const dataYear = month > expiryMonth ? year - 1 : year
+      const ymKey = `${dataYear}-${mm}`
+      const cur = monthEnds.get(ymKey)
+      if (cur === undefined) { values.push(null); continue }
       if (crossMode === 'ratio') {
-        values.push(cur === null ? null : Math.round(cur * 10000) / 10000)
+        values.push(Math.round(cur * 10000) / 10000)
       } else {
-        // 价差涨跌：1月以本合约上市年12月末价差为基准，其余与上月末比较
-        const prev = month === 1 ? monthEndLevel(year - 1, 12) : monthEndLevel(year, month - 1)
-        values.push(cur === null || prev === null ? null : Math.round((cur - prev) * 100) / 100)
+        // Bug fix 3: 计算上一个日历月的 key，而非依赖 sortedYM 索引
+        const prevMonth = month === 1 ? 12 : month - 1
+        const prevYear = month === 1 ? dataYear - 1 : dataYear
+        const prevMM = String(prevMonth).padStart(2, '0')
+        const prev = monthEnds.get(`${prevYear}-${prevMM}`)
+        values.push(prev === undefined ? null : Math.round((cur - prev) * 100) / 100)
       }
     }
     rows.push({ contract: contractName, values })
@@ -896,10 +915,7 @@ export function getCrossMonthlyDetailData(symA, symB, contractMonth, crossMode, 
 // ============ 跨月价差（同品种、不同到期月份） ============
 
 /**
- * 生成跨月价差日线序列 = 同品种 月份A合约 - 月份B合约
- * @param {string} symbol 品种代码
- * @param {string} monthA 合约月份A
- * @param {string} monthB 合约月份B
+ * 生成跨月价差日线序列（mock 回退）
  */
 export function getCrossMonthSeries(symbol, monthA, monthB) {
   const seriesA = generateDailySeries(symbol, monthA)
@@ -914,32 +930,136 @@ export function getCrossMonthSeries(symbol, monthA, monthB) {
   return out
 }
 
+/**
+ * 跨月价差真实数据配对：同品种不同月份合约，按年配对计算价差
+ * 配对规则：monthB >= monthA → 同年份（如 01-05: JM2501 vs JM2505）
+ *          monthB < monthA  → B 滚到次年（如 05-01: JM2505 vs JM2601）
+ * @returns {Array<{deliveryYear, series}>}
+ */
+function computeRealCrossMonthContracts(symbol, monthA, monthB) {
+  const contractsA = getRealContracts(symbol, monthA)
+  const contractsB = getRealContracts(symbol, monthB)
+  if (!contractsA || !contractsB) return null
+
+  const intA = parseInt(monthA), intB = parseInt(monthB)
+  const out = []
+
+  for (const ca of contractsA) {
+    const yearB = intB >= intA ? ca.deliveryYear : ca.deliveryYear + 1
+    const cb = contractsB.find(c => c.deliveryYear === yearB)
+    if (!cb) continue
+
+    const mapB = new Map(cb.series.map(p => [p.date, p.close]))
+    const series = []
+    for (const p of ca.series) {
+      const bv = mapB.get(p.date)
+      if (bv === undefined || bv === null) continue
+      series.push({ date: p.date, close: Math.round((p.close - bv) * 10000) / 10000 })
+    }
+    if (series.length) {
+      out.push({
+        deliveryYear: ca.deliveryYear,
+        codeA: ca.code,
+        codeB: cb.code,
+        series
+      })
+    }
+  }
+  return out.length ? out : null
+}
+
 /** 跨月价差季节性数据（各年价差日线走势叠加） */
 export function getCrossMonthSeasonalData(symbol, monthA, monthB, yearRange) {
+  const pseudo = computeRealCrossMonthContracts(symbol, monthA, monthB)
+  if (pseudo) {
+    // 用较晚月份作为窗口参数，确保覆盖完整重叠期
+    const laterMonth = String(Math.max(parseInt(monthA), parseInt(monthB))).padStart(2, '0')
+    return computeRealSeasonal(pseudo, laterMonth, yearRange)
+  }
   const series = getCrossMonthSeries(symbol, monthA, monthB)
   return computeDailySeasonalCore(series, findSymbol(symbol).startYear, yearRange)
 }
 
 /** 跨月价差连续时序数据 */
 export function getCrossMonthTimeSeriesData(symbol, monthA, monthB) {
+  const pseudo = computeRealCrossMonthContracts(symbol, monthA, monthB)
+  if (pseudo) {
+    const series = mergeContractSeries(
+      pseudo,
+      c => `${c.codeA}-${c.codeB}`,
+      c => String(c.deliveryYear).slice(2) + monthA + '-' + String(
+        parseInt(monthB) >= parseInt(monthA) ? c.deliveryYear : c.deliveryYear + 1
+      ).slice(2) + monthB
+    )
+    return sampleSeriesWithSegments(series)
+  }
   return sampleSeries(getCrossMonthSeries(symbol, monthA, monthB))
 }
 
 /**
+ * 跨月价差12个月份明细表（真实数据路径）
+ * 行标签形如 "2501-2505"，每月值 = 该月末价差水平（绝对值，非涨跌）
+ */
+function computeRealCrossMonthDetail(pseudo, monthA, monthB, yearRange) {
+  const currentYear = pseudo[pseudo.length - 1].deliveryYear
+  let startYear = pseudo[0].deliveryYear
+  if (yearRange && yearRange !== 'all') {
+    startYear = Math.max(startYear, currentYear - parseInt(yearRange))
+  }
+  const intA = parseInt(monthA), intB = parseInt(monthB)
+  const expiryMonth = Math.max(intA, intB)
+  const byYear = new Map(pseudo.map(c => [c.deliveryYear, c]))
+  const rows = []
+
+  for (let year = startYear; year <= currentYear; year++) {
+    const yyA = String(year).slice(2)
+    const yearB = intB >= intA ? year : year + 1
+    const yyB = String(yearB).slice(2)
+    const contractName = `${yyA}${monthA}-${yyB}${monthB}`
+    const c = byYear.get(year)
+    const values = []
+
+    if (!c) {
+      rows.push({ contract: contractName, values: new Array(12).fill(null) })
+      continue
+    }
+
+    // 按 YYYY-MM 索引月末价差
+    const monthEnds = new Map()
+    for (const p of c.series) {
+      monthEnds.set(p.date.slice(0, 7), p.close)
+    }
+
+    for (let month = 1; month <= 12; month++) {
+      const mm = String(month).padStart(2, '0')
+      // 窗口年份：m > expiryMonth → year-1，m ≤ expiryMonth → year
+      const dataYear = month > expiryMonth ? year - 1 : year
+      const ymKey = `${dataYear}-${mm}`
+      const cur = monthEnds.get(ymKey)
+      if (cur === undefined) { values.push(null); continue }
+      // 价差的逐月涨跌：本月末价差 - 上月末价差
+      const prevMonth = month === 1 ? 12 : month - 1
+      const prevYear = month === 1 ? dataYear - 1 : dataYear
+      const prevMM = String(prevMonth).padStart(2, '0')
+      const prev = monthEnds.get(`${prevYear}-${prevMM}`)
+      values.push(prev === undefined ? null : Math.round((cur - prev) * 100) / 100)
+    }
+    rows.push({ contract: contractName, values })
+  }
+  return { contracts: rows.map(r => r.contract), rows }
+}
+
+/**
  * 跨月价差12个月份明细表
- * 行标签形如 "2409-2501"，清晰标识价差对应的两个合约月份
- * （若 monthB < monthA，则B合约滚动至次年）
- * 行数与季节性叠线图年份数一致
- * 口径：每月值 = 本月末价差 - 上月末价差（1月以上年12月末为基准），即"价差的涨跌"
- * @param {string} yearRange 'all' | '3' | '5' | '10'
  */
 export function getCrossMonthDetailData(symbol, monthA, monthB, yearRange) {
+  const pseudo = computeRealCrossMonthContracts(symbol, monthA, monthB)
+  if (pseudo) return computeRealCrossMonthDetail(pseudo, monthA, monthB, yearRange)
+
+  // mock 回退
   const series = getCrossMonthSeries(symbol, monthA, monthB)
   const startYear = findSymbol(symbol).startYear
-
-  // 年份范围与图表保持一致
   const contractYears = resolveYearList(startYear, yearRange)
-
   const rows = contractYears.map(year => {
     const yyA = String(year).slice(2)
     const yearB = parseInt(monthB) >= parseInt(monthA) ? year : year + 1
@@ -948,7 +1068,6 @@ export function getCrossMonthDetailData(symbol, monthA, monthB, yearRange) {
     const values = []
     for (let month = 1; month <= 12; month++) {
       const cur = getMonthEndClose(series, year, month)
-      // 价差涨跌：1月以上年12月末价差为基准，其余与上月末比较
       const prev = month === 1
         ? getMonthEndClose(series, year - 1, 12)
         : getMonthEndClose(series, year, month - 1)
@@ -956,7 +1075,6 @@ export function getCrossMonthDetailData(symbol, monthA, monthB, yearRange) {
     }
     return { contract: contractName, values }
   })
-
   return { contracts: rows.map(r => r.contract), rows }
 }
 

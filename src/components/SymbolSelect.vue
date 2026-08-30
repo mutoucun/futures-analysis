@@ -271,4 +271,42 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick))
   font-size: 12px;
   color: var(--text-disabled);
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  .symbol-select {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .select-trigger {
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  /* 下拉框在移动端自适应宽度，不超出屏幕 */
+  .select-dropdown {
+    width: calc(100vw - 40px);
+    max-width: 280px;
+  }
+
+  .search-input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* 选项触控友好 */
+  .opt-item {
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+
+  .opt-group-title {
+    padding: 7px 12px 4px;
+  }
+
+  .option-list {
+    max-height: 240px;
+  }
+}
 </style>
