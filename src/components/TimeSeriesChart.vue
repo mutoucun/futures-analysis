@@ -270,8 +270,7 @@ function buildOption() {
       axisLabel: {
         color: th.axisLabel,
         fontSize: 11,
-        interval: 0,
-        hideOverlap: true,
+        interval: 'auto',
         formatter: (val) => val.substring(0, 4)
       },
       axisTick: { show: false }
