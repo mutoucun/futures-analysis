@@ -110,18 +110,31 @@ function buildOption() {
 
   // 换合约分段（真实数据才有）：交替色带 + 分段中点刻度标签 + tooltip 合约周期
   const hasSeg = Array.isArray(segments) && segments.length > 1
-  const segLabelAt = new Map() // 采样索引(分段中点) -> 合约标签
   const segOfIndex = []        // 采样索引 -> 所属分段
   const bandData = []          // markArea 数据（奇数分段铺浅底，偶数分段留白形成交替）
+  const segMarkLineData = []   // markLine 合约周期标注（锚定日期，跟随缩放）
   if (hasSeg) {
     for (let i = 0; i < dates.length; i++) segOfIndex[i] = null
     segments.forEach((seg, si) => {
       for (let i = seg.startIndex; i <= seg.endIndex && i < dates.length; i++) {
         segOfIndex[i] = seg
       }
-      // 分段太窄（采样点<4个，约不足一个月）不放下标签，避免重叠
+      // 合约周期标注：锚定在分段中点日期上，跟随 dataZoom
       if (seg.endIndex - seg.startIndex >= 3) {
-        segLabelAt.set(Math.round((seg.startIndex + seg.endIndex) / 2), `${slashDate(seg.start)}~${slashDate(seg.end)}`)
+        const midDate = dates[Math.round((seg.startIndex + seg.endIndex) / 2)]
+        segMarkLineData.push({
+          name: `${slashDate(seg.start)}~${slashDate(seg.end)}`,
+          xAxis: midDate,
+          label: {
+            show: true,
+            formatter: '{b}',
+            position: 'insideEndBottom',
+            distance: 5,
+            color: th.axisLabel,
+            fontSize: 10
+          },
+          lineStyle: { width: 0, opacity: 0 }
+        })
       }
       if (si % 2 === 1) {
         bandData.push([
@@ -167,6 +180,11 @@ function buildOption() {
     lineStyle: { color: th.line, width: 1.5 },
     itemStyle: { color: th.line },
     markArea: bandData.length ? { silent: true, data: bandData } : undefined,
+    markLine: segMarkLineData.length ? {
+      silent: true,
+      symbol: 'none',
+      data: segMarkLineData
+    } : undefined,
     areaStyle: showA ? undefined : {
       color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
         { offset: 0, color: th.areaTop },
@@ -251,13 +269,10 @@ function buildOption() {
       boundaryGap: false,
       axisLine: { lineStyle: { color: th.axisLine } },
       axisLabel: {
+        show: !hasSeg,
         color: th.axisLabel,
-        fontSize: hasSeg ? 10 : 11,
-        interval: hasSeg ? 0 : 'auto',
-        hideOverlap: hasSeg,
-        formatter: hasSeg
-          ? (val, idx) => (segLabelAt.has(idx) ? segLabelAt.get(idx) : '')
-          : (val) => val.substring(0, 4)
+        fontSize: 11,
+        formatter: (val) => val.substring(0, 4)
       },
       axisTick: { show: false }
     },
