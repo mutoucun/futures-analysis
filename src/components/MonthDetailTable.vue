@@ -393,11 +393,11 @@ function exportCSV() {
 }
 
 .stat-up {
-  color: var(--up-text);
+  color: var(--up-bg);
 }
 
 .stat-down {
-  color: var(--down-text);
+  color: var(--down-bg);
 }
 
 .stat-sep {
