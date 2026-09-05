@@ -142,6 +142,49 @@ def merge_series(series, new_data):
     return merged, len(new_points)
 
 
+def discover_next_contract(symbol, contracts, today):
+    """发现新合约：如果文件内所有合约均已过期，尝试拉取下一年份的同月合约。
+    Returns: (new_contract_dict, data_points_count) or (None, 0)
+    """
+    if not contracts:
+        return None, 0
+
+    # 找到最大 deliveryYear
+    max_year = max(c.get('deliveryYear', 0) for c in contracts)
+
+    # 如果最大年份的合约仍然活跃，不需要发现
+    newest = [c for c in contracts if c.get('deliveryYear') == max_year][-1]
+    if is_contract_active(newest, today):
+        return None, 0
+
+    # 从最新合约代码中解析交割月份
+    month = parse_contract_code(newest.get('code', ''), max_year)
+    if month is None:
+        return None, 0
+
+    next_year = max_year + 1
+    month_str = str(month).zfill(2)
+    sina_code = build_sina_code(symbol, next_year, month_str)
+    if not sina_code:
+        return None, 0
+
+    # 尝试拉取下一年合约数据
+    new_data = fetch_contract_data(sina_code)
+    if not new_data:
+        return None, 0
+
+    # 构造新合约条目
+    series = [{'date': d, 'close': c} for d, c in sorted(new_data.items())]
+    code_prefix = SINA_PREFIX.get(symbol, '')
+    yy = next_year % 100
+    new_contract = {
+        'code': f"{code_prefix}{yy:02d}{month_str}",
+        'deliveryYear': next_year,
+        'series': series
+    }
+    return new_contract, len(series)
+
+
 def update_file(json_file, target_symbols, today, dry_run):
     """更新单个 JSON 文件"""
     with open(json_file, 'r', encoding='utf-8') as f:
@@ -189,7 +232,15 @@ def update_file(json_file, target_symbols, today, dry_run):
             file_updated += 1
             file_added += added
 
-    if file_updated > 0 and not dry_run:
+    # 发现新合约：所有已有合约均过期时，尝试拉取下一年份合约
+    file_discovered = 0
+    new_contract, discovered_points = discover_next_contract(symbol, contracts, today)
+    if new_contract and not dry_run:
+        contracts.append(new_contract)
+        file_added += discovered_points
+        file_discovered += 1
+
+    if (file_updated > 0 or file_discovered > 0) and not dry_run:
         payload['updatedAt'] = today.isoformat()
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -201,6 +252,7 @@ def update_file(json_file, target_symbols, today, dry_run):
         'added': file_added,
         'failed': file_failed,
         'skipped': file_skipped,
+        'discovered': file_discovered,
     }
 
 
@@ -227,6 +279,7 @@ def main():
     total_contracts_updated = 0
     total_points_added = 0
     total_contracts_failed = 0
+    total_discovered = 0
 
     print(f'数据更新 — {today.isoformat()}')
     print(f'待处理: {total_files} 个文件')
@@ -242,11 +295,17 @@ def main():
             continue
 
         tag = f"[{i+1}/{total_files}]"
+        if result['discovered'] > 0:
+            print(f'{tag} {result["symbol"]}_{result["month"]}: '
+                  f'发现新合约 (+{result["discovered"]})')
+            total_discovered += result['discovered']
+            total_points_added += result['added']
         if result['updated'] > 0:
             print(f'{tag} {result["symbol"]}_{result["month"]}: '
                   f'+{result["added"]} 点 ({result["updated"]} 合约更新)')
             total_contracts_updated += result['updated']
-            total_points_added += result['added']
+            if result['discovered'] == 0:
+                total_points_added += result['added']
         elif result['failed'] > 0:
             print(f'{tag} {result["symbol"]}_{result["month"]}: '
                   f'无新数据 ({result["failed"]} 合约拉取失败)')
@@ -260,11 +319,12 @@ def main():
     print()
     print(f'完成！耗时 {elapsed:.1f} 秒')
     print(f'  合约更新: {total_contracts_updated}')
+    print(f'  新合约发现: {total_discovered}')
     print(f'  数据点新增: {total_points_added}')
     print(f'  拉取失败: {total_contracts_failed}')
 
     # JSON 格式统计（供 serve_local.js /api/update 解析，不受控制台编码影响）
-    print(f'__STATS__{{"contractsUpdated":{total_contracts_updated},"pointsAdded":{total_points_added},"failed":{total_contracts_failed},"elapsed":{elapsed:.1f}}}')
+    print(f'__STATS__{{"contractsUpdated":{total_contracts_updated},"pointsAdded":{total_points_added},"failed":{total_contracts_failed},"discovered":{total_discovered},"elapsed":{elapsed:.1f}}}')
 
     if total_contracts_updated > 0:
         print()
