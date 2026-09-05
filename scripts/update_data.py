@@ -152,10 +152,14 @@ def discover_next_contract(symbol, contracts, today):
     # 找到最大 deliveryYear
     max_year = max(c.get('deliveryYear', 0) for c in contracts)
 
-    # 如果最大年份的合约仍然活跃，不需要发现
+    # 如果最大年份的合约仍然活跃且数据新鲜（15天内有更新），不需要发现
     newest = [c for c in contracts if c.get('deliveryYear') == max_year][-1]
     if is_contract_active(newest, today):
-        return None, 0
+        series = newest.get('series', [])
+        if series:
+            last_date = datetime.strptime(series[-1]['date'], '%Y-%m-%d').date()
+            if (today - last_date).days <= 15:
+                return None, 0
 
     # 从最新合约代码中解析交割月份
     month = parse_contract_code(newest.get('code', ''), max_year)
